@@ -1,0 +1,893 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>I-Claw - Your OpenClaw in Your Pocket</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="I-Claw is a beautiful mobile app that connects you to your OpenClaw AI assistant from anywhere. Control your personal AI from your iPhone." />
+    <meta name="theme-color" content="#0F0F14" />
+    <style>
+      :root {
+        --primary: #6366F1;
+        --primary-dark: #4F46E5;
+        --gradient-start: #6366F1;
+        --gradient-end: #8B5CF6;
+        --bg-root: #0F0F14;
+        --bg-surface: #1A1A24;
+        --bg-elevated: #252530;
+        --text-primary: #FFFFFF;
+        --text-secondary: #9CA3AF;
+        --text-tertiary: #6B7280;
+        --success: #10B981;
+        --border: #2A2A3A;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+        background: var(--bg-root);
+        color: var(--text-primary);
+        line-height: 1.6;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+
+      .gradient-orb {
+        position: fixed;
+        width: 600px;
+        height: 600px;
+        border-radius: 50%;
+        filter: blur(120px);
+        opacity: 0.3;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .orb-1 {
+        top: -200px;
+        right: -200px;
+        background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      }
+
+      .orb-2 {
+        bottom: -300px;
+        left: -200px;
+        background: linear-gradient(135deg, var(--gradient-end), var(--gradient-start));
+        opacity: 0.2;
+      }
+
+      nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        padding: 20px 24px;
+        background: rgba(15, 15, 20, 0.8);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .nav-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-decoration: none;
+        color: var(--text-primary);
+      }
+
+      .logo-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+      }
+
+      .logo-text {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+      }
+
+      .nav-cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+        color: white;
+        text-decoration: none;
+        border-radius: 24px;
+        font-weight: 600;
+        font-size: 14px;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+
+      .nav-cta:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+      }
+
+      .hero {
+        position: relative;
+        z-index: 1;
+        padding: 140px 24px 80px;
+        text-align: center;
+      }
+
+      .hero-content {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-bottom: 24px;
+      }
+
+      .hero-badge-dot {
+        width: 8px;
+        height: 8px;
+        background: var(--success);
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+
+      .hero h1 {
+        font-size: clamp(40px, 8vw, 72px);
+        font-weight: 800;
+        line-height: 1.1;
+        letter-spacing: -2px;
+        margin-bottom: 24px;
+        background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .hero h1 span {
+        background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .hero-subtitle {
+        font-size: clamp(18px, 3vw, 22px);
+        color: var(--text-secondary);
+        max-width: 600px;
+        margin: 0 auto 40px;
+        line-height: 1.7;
+      }
+
+      .hero-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        justify-content: center;
+        margin-bottom: 60px;
+      }
+
+      .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 16px 32px;
+        background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+        color: white;
+        text-decoration: none;
+        border-radius: 30px;
+        font-weight: 600;
+        font-size: 16px;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 32px rgba(99, 102, 241, 0.5);
+      }
+
+      .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 16px 32px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        color: var(--text-primary);
+        text-decoration: none;
+        border-radius: 30px;
+        font-weight: 600;
+        font-size: 16px;
+        transition: background 0.2s, border-color 0.2s;
+      }
+
+      .btn-secondary:hover {
+        background: var(--bg-elevated);
+        border-color: var(--primary);
+      }
+
+      .btn-icon {
+        width: 20px;
+        height: 20px;
+      }
+
+      .phone-mockup {
+        position: relative;
+        max-width: 300px;
+        margin: 0 auto;
+      }
+
+      .phone-frame {
+        background: linear-gradient(135deg, #2A2A3A, #1A1A24);
+        border-radius: 40px;
+        padding: 12px;
+        box-shadow: 
+          0 0 0 1px rgba(255,255,255,0.1),
+          0 32px 64px rgba(0,0,0,0.5),
+          0 0 120px rgba(99, 102, 241, 0.2);
+      }
+
+      .phone-screen {
+        background: var(--bg-root);
+        border-radius: 32px;
+        aspect-ratio: 9/19.5;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .phone-notch {
+        width: 120px;
+        height: 28px;
+        background: #000;
+        border-radius: 0 0 20px 20px;
+        margin: 0 auto;
+      }
+
+      .phone-content {
+        flex: 1;
+        padding: 20px 16px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .phone-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding-bottom: 16px;
+      }
+
+      .phone-header img {
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
+      }
+
+      .phone-header span {
+        font-weight: 600;
+        font-size: 16px;
+      }
+
+      .phone-messages {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 8px 0;
+      }
+
+      .message {
+        max-width: 80%;
+        padding: 12px 16px;
+        border-radius: 18px;
+        font-size: 14px;
+        line-height: 1.4;
+      }
+
+      .message-user {
+        align-self: flex-end;
+        background: var(--bg-elevated);
+        border: 1px solid var(--primary);
+      }
+
+      .message-ai {
+        align-self: flex-start;
+        background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      }
+
+      .phone-input {
+        display: flex;
+        gap: 8px;
+        padding-top: 12px;
+      }
+
+      .phone-input-field {
+        flex: 1;
+        background: var(--bg-elevated);
+        border-radius: 20px;
+        padding: 10px 16px;
+        font-size: 13px;
+        color: var(--text-tertiary);
+      }
+
+      .phone-input-btn {
+        width: 36px;
+        height: 36px;
+        background: var(--primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .features {
+        position: relative;
+        z-index: 1;
+        padding: 80px 24px;
+      }
+
+      .section-header {
+        text-align: center;
+        max-width: 600px;
+        margin: 0 auto 60px;
+      }
+
+      .section-header h2 {
+        font-size: clamp(32px, 5vw, 48px);
+        font-weight: 700;
+        letter-spacing: -1px;
+        margin-bottom: 16px;
+      }
+
+      .section-header p {
+        color: var(--text-secondary);
+        font-size: 18px;
+      }
+
+      .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 24px;
+        max-width: 1000px;
+        margin: 0 auto;
+      }
+
+      .feature-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 32px;
+        transition: transform 0.2s, border-color 0.2s;
+      }
+
+      .feature-card:hover {
+        transform: translateY(-4px);
+        border-color: var(--primary);
+      }
+
+      .feature-icon {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+
+      .feature-icon svg {
+        width: 24px;
+        height: 24px;
+        color: white;
+      }
+
+      .feature-card h3 {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 12px;
+      }
+
+      .feature-card p {
+        color: var(--text-secondary);
+        font-size: 15px;
+        line-height: 1.6;
+      }
+
+      .capabilities {
+        position: relative;
+        z-index: 1;
+        padding: 80px 24px;
+        background: var(--bg-surface);
+      }
+
+      .capabilities-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+        max-width: 900px;
+        margin: 0 auto;
+      }
+
+      .capability-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 20px;
+        background: var(--bg-root);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+      }
+
+      .capability-check {
+        width: 24px;
+        height: 24px;
+        background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .capability-check svg {
+        width: 14px;
+        height: 14px;
+        color: white;
+      }
+
+      .capability-item span {
+        font-size: 15px;
+        font-weight: 500;
+      }
+
+      .download {
+        position: relative;
+        z-index: 1;
+        padding: 100px 24px;
+        text-align: center;
+      }
+
+      .download-content {
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      .download h2 {
+        font-size: clamp(32px, 5vw, 48px);
+        font-weight: 700;
+        letter-spacing: -1px;
+        margin-bottom: 16px;
+      }
+
+      .download p {
+        color: var(--text-secondary);
+        font-size: 18px;
+        margin-bottom: 40px;
+      }
+
+      .qr-container {
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 32px;
+        display: inline-block;
+        margin-bottom: 32px;
+      }
+
+      .qr-code {
+        width: 200px;
+        height: 200px;
+        background: white;
+        border-radius: 16px;
+        padding: 16px;
+        margin: 0 auto 20px;
+      }
+
+      .qr-code canvas {
+        width: 100% !important;
+        height: 100% !important;
+      }
+
+      .qr-label {
+        color: var(--text-secondary);
+        font-size: 14px;
+      }
+
+      .store-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        justify-content: center;
+      }
+
+      .store-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 24px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        text-decoration: none;
+        color: var(--text-primary);
+        transition: background 0.2s, border-color 0.2s;
+      }
+
+      .store-btn:hover {
+        background: var(--bg-elevated);
+        border-color: var(--primary);
+      }
+
+      .store-btn svg {
+        width: 24px;
+        height: 24px;
+      }
+
+      .store-btn-text {
+        text-align: left;
+      }
+
+      .store-btn-label {
+        font-size: 11px;
+        color: var(--text-tertiary);
+        display: block;
+      }
+
+      .store-btn-name {
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      footer {
+        position: relative;
+        z-index: 1;
+        padding: 40px 24px;
+        text-align: center;
+        border-top: 1px solid var(--border);
+      }
+
+      footer p {
+        color: var(--text-tertiary);
+        font-size: 14px;
+      }
+
+      footer a {
+        color: var(--primary);
+        text-decoration: none;
+      }
+
+      footer a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 768px) {
+        nav {
+          padding: 16px 20px;
+        }
+
+        .logo-text {
+          font-size: 20px;
+        }
+
+        .nav-cta {
+          padding: 8px 16px;
+          font-size: 13px;
+        }
+
+        .hero {
+          padding: 120px 20px 60px;
+        }
+
+        .phone-mockup {
+          max-width: 260px;
+        }
+
+        .features, .capabilities, .download {
+          padding: 60px 20px;
+        }
+
+        .qr-code {
+          width: 180px;
+          height: 180px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="gradient-orb orb-1"></div>
+    <div class="gradient-orb orb-2"></div>
+
+    <nav>
+      <div class="nav-content">
+        <a href="#" class="logo">
+          <img src="assets/images/icon.png" alt="I-Claw" class="logo-icon" />
+          <span class="logo-text">I-Claw</span>
+        </a>
+        <a href="#download" class="nav-cta">
+          Get the App
+          <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </a>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <span class="hero-badge-dot"></span>
+          Works with OpenClaw
+        </div>
+        <h1>Your <span>OpenClaw</span><br />in Your Pocket</h1>
+        <p class="hero-subtitle">
+          I-Claw is a beautiful mobile companion for OpenClaw. Control your personal AI assistant from anywhere, anytime.
+        </p>
+        <div class="hero-buttons">
+          <a href="#download" class="btn-primary">
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+            Download Now
+          </a>
+          <a href="https://openclaw.ai" target="_blank" class="btn-secondary">
+            Learn about OpenClaw
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+            </svg>
+          </a>
+        </div>
+
+        <div class="phone-mockup">
+          <div class="phone-frame">
+            <div class="phone-screen">
+              <div class="phone-notch"></div>
+              <div class="phone-content">
+                <div class="phone-header">
+                  <img src="assets/images/icon.png" alt="I-Claw" />
+                  <span>I-Claw</span>
+                </div>
+                <div class="phone-messages">
+                  <div class="message message-user">Check my calendar for tomorrow</div>
+                  <div class="message message-ai">You have 3 meetings tomorrow: 9am standup, 11am design review, and 2pm client call. Want me to send you a summary?</div>
+                  <div class="message message-user">Yes please!</div>
+                </div>
+                <div class="phone-input">
+                  <div class="phone-input-field">Message I-Claw...</div>
+                  <div class="phone-input-btn">
+                    <svg width="16" height="16" fill="white" viewBox="0 0 24 24">
+                      <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="features">
+      <div class="section-header">
+        <h2>Why I-Claw?</h2>
+        <p>The simplest way to access your OpenClaw assistant on the go</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+            </svg>
+          </div>
+          <h3>Mobile-First Design</h3>
+          <p>A beautiful, native-feeling interface optimized for iPhone. Dark mode by default, with smooth animations and haptic feedback.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+            </svg>
+          </div>
+          <h3>Instant Connection</h3>
+          <p>Connect to your OpenClaw Gateway in seconds. Just enter your server URL and start commanding your AI from anywhere.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+            </svg>
+          </div>
+          <h3>Persistent History</h3>
+          <p>Your conversations are saved securely. Pick up right where you left off, whether you're on your phone or desktop.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="capabilities">
+      <div class="section-header">
+        <h2>What You Can Do</h2>
+        <p>Once connected to OpenClaw, command your AI to handle almost anything</p>
+      </div>
+      <div class="capabilities-list">
+        <div class="capability-item">
+          <div class="capability-check">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <span>Manage emails</span>
+        </div>
+        <div class="capability-item">
+          <div class="capability-check">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <span>Control calendar</span>
+        </div>
+        <div class="capability-item">
+          <div class="capability-check">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <span>Run terminal commands</span>
+        </div>
+        <div class="capability-item">
+          <div class="capability-check">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <span>Browse the web</span>
+        </div>
+        <div class="capability-item">
+          <div class="capability-check">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <span>Manage files</span>
+        </div>
+        <div class="capability-item">
+          <div class="capability-check">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <span>Send messages</span>
+        </div>
+        <div class="capability-item">
+          <div class="capability-check">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <span>Check in for flights</span>
+        </div>
+        <div class="capability-item">
+          <div class="capability-check">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <span>Automate workflows</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="download" id="download">
+      <div class="download-content">
+        <h2>Get I-Claw Now</h2>
+        <p>Download Expo Go and scan the QR code to start using I-Claw on your iPhone</p>
+
+        <div class="qr-container">
+          <div class="qr-code" id="qr-code"></div>
+          <p class="qr-label">Scan with your camera or Expo Go</p>
+        </div>
+
+        <div class="store-buttons">
+          <a href="https://apps.apple.com/app/id982107779" target="_blank" class="store-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+            </svg>
+            <div class="store-btn-text">
+              <span class="store-btn-label">Download on the</span>
+              <span class="store-btn-name">App Store</span>
+            </div>
+          </a>
+          <a href="https://play.google.com/store/apps/details?id=host.exp.exponent" target="_blank" class="store-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"/>
+            </svg>
+            <div class="store-btn-text">
+              <span class="store-btn-label">Get it on</span>
+              <span class="store-btn-name">Google Play</span>
+            </div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <p>
+        I-Claw is a companion app for <a href="https://openclaw.ai" target="_blank">OpenClaw</a>.<br />
+        Built with Expo and React Native.
+      </p>
+    </footer>
+
+    <!-- UPDATE THIS URL: Replace YOUR_EXPO_URL with your actual Expo app URL -->
+    <script src="https://unpkg.com/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
+    <script>
+      (function() {
+        // IMPORTANT: Update this to your I-Claw app's Expo URL
+        const deepLink = "exps://YOUR_EXPO_URL_HERE";
+
+        const qrCode = new QRCodeStyling({
+          width: 400,
+          height: 400,
+          data: deepLink,
+          image: "assets/images/icon.png",
+          dotsOptions: {
+            color: "#6366F1",
+            type: "rounded"
+          },
+          backgroundOptions: {
+            color: "#ffffff"
+          },
+          imageOptions: {
+            crossOrigin: "anonymous",
+            margin: 8,
+            imageSize: 0.35
+          },
+          cornersSquareOptions: {
+            type: "extra-rounded",
+            color: "#4F46E5"
+          },
+          cornersDotOptions: {
+            type: "dot",
+            color: "#4F46E5"
+          },
+          qrOptions: {
+            errorCorrectionLevel: "H"
+          }
+        });
+
+        qrCode.append(document.getElementById("qr-code"));
+      })();
+    </script>
+  </body>
+</html>
