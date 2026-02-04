@@ -191,9 +191,9 @@ export default function SettingsScreen() {
         entering={FadeInDown.delay(400).springify()}
         style={styles.footer}
       >
-        <ThemedText style={styles.version}>OpenClaw Mobile v1.0.0</ThemedText>
+        <ThemedText style={styles.version}>I-Claw v1.0.0</ThemedText>
         <ThemedText style={styles.credit}>
-          Your Personal AI Assistant
+          Your OpenClaw in Your Pocket
         </ThemedText>
       </Animated.View>
     </KeyboardAwareScrollViewCompat>

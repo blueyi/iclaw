@@ -62,7 +62,7 @@ export function MessageInput({ onSend, disabled = false }: MessageInputProps) {
       <View style={styles.inputWrapper}>
         <TextInput
           style={styles.input}
-          placeholder="Message OpenClaw..."
+          placeholder="Message I-Claw..."
           placeholderTextColor={Colors.dark.textTertiary}
           value={message}
           onChangeText={setMessage}

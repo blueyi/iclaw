@@ -26,7 +26,7 @@ export default function RootStackNavigator() {
         name="Chat"
         component={ChatScreen}
         options={({ navigation }) => ({
-          headerTitle: () => <HeaderTitle title="OpenClaw" />,
+          headerTitle: () => <HeaderTitle title="I-Claw" />,
           headerRight: () => (
             <HeaderButton
               onPress={() => navigation.navigate("Settings")}

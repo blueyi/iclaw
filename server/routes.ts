@@ -127,7 +127,7 @@ function generateLocalResponse(userMessage: string): string {
   const lowerMessage = userMessage.toLowerCase();
 
   if (lowerMessage.includes("hello") || lowerMessage.includes("hi")) {
-    return "Hello! I'm OpenClaw, your personal AI assistant. To connect me to your full capabilities, add your OpenClaw Gateway URL in Settings. How can I help you today?";
+    return "Hello! I'm I-Claw, your mobile gateway to OpenClaw. To connect me to your AI assistant's full capabilities, add your OpenClaw Gateway URL in Settings. How can I help you today?";
   }
 
   if (lowerMessage.includes("help")) {
@@ -135,12 +135,12 @@ function generateLocalResponse(userMessage: string): string {
   }
 
   if (lowerMessage.includes("settings") || lowerMessage.includes("connect")) {
-    return "To connect to your OpenClaw Gateway, tap the settings icon in the top right corner and enter your server URL (usually something like http://your-server:3000). Once connected, I'll have access to all my capabilities!";
+    return "To connect to your OpenClaw Gateway, tap the settings icon in the top right corner and enter your server URL (usually something like http://your-server:3000). Once connected, you'll have full access to your AI assistant!";
   }
 
   if (lowerMessage.includes("what can you do") || lowerMessage.includes("capabilities")) {
     return "When connected to your OpenClaw Gateway, I can: manage your emails, control your calendar, run terminal commands, browse the web, manage files, send messages through WhatsApp/Telegram/Discord, and much more. Configure your server URL in Settings to get started!";
   }
 
-  return "I received your message! To respond with my full capabilities, please connect me to your OpenClaw Gateway server. Go to Settings and enter your server URL to unlock AI-powered assistance for emails, calendar, file management, web browsing, and more.";
+  return "I received your message! To respond with full capabilities, please connect I-Claw to your OpenClaw Gateway server. Go to Settings and enter your server URL to unlock AI-powered assistance for emails, calendar, file management, web browsing, and more.";
 }

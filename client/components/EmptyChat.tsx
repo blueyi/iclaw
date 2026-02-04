@@ -17,8 +17,7 @@ export function EmptyChat() {
       />
       <ThemedText style={styles.title}>Start a Conversation</ThemedText>
       <ThemedText style={styles.subtitle}>
-        Send a message to your OpenClaw assistant and let the AI help you with
-        tasks, questions, and more.
+        Send a message to your AI assistant. Connect to your OpenClaw Gateway in Settings to unlock full capabilities.
       </ThemedText>
     </Animated.View>
   );
