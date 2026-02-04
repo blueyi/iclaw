@@ -4,11 +4,13 @@ import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Platform, StyleSheet } from "react-native";
 import HomeStackNavigator from "@/navigation/HomeStackNavigator";
+import RewardsStackNavigator from "@/navigation/RewardsStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
 
 export type MainTabParamList = {
   HomeTab: undefined;
+  RewardsTab: undefined;
   ProfileTab: undefined;
 };
 
@@ -47,9 +49,19 @@ export default function MainTabNavigator() {
         name="HomeTab"
         component={HomeStackNavigator}
         options={{
-          title: "Home",
+          title: "Chat",
           tabBarIcon: ({ color, size }) => (
-            <Feather name="home" size={size} color={color} />
+            <Feather name="message-circle" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="RewardsTab"
+        component={RewardsStackNavigator}
+        options={{
+          title: "Rewards",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="gift" size={size} color={color} />
           ),
         }}
       />
