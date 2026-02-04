@@ -1,17 +1,14 @@
 import React from "react";
-import { Pressable } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { Feather } from "@expo/vector-icons";
-import { HeaderButton } from "@react-navigation/elements";
 
+import MainTabNavigator from "@/navigation/MainTabNavigator";
 import ChatScreen from "@/screens/ChatScreen";
 import SettingsScreen from "@/screens/SettingsScreen";
-import { HeaderTitle } from "@/components/HeaderTitle";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
-import { Colors } from "@/constants/theme";
 
 export type RootStackParamList = {
-  Chat: undefined;
+  MainTabs: undefined;
+  Chat: { conversationId?: string };
   Settings: undefined;
 };
 
@@ -23,24 +20,16 @@ export default function RootStackNavigator() {
   return (
     <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen
+        name="MainTabs"
+        component={MainTabNavigator}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="Chat"
         component={ChatScreen}
-        options={({ navigation }) => ({
-          headerTitle: () => <HeaderTitle title="I-Claw" />,
-          headerRight: () => (
-            <HeaderButton
-              onPress={() => navigation.navigate("Settings")}
-              pressColor="transparent"
-              pressOpacity={0.6}
-            >
-              <Feather
-                name="settings"
-                size={22}
-                color={Colors.dark.text}
-              />
-            </HeaderButton>
-          ),
-        })}
+        options={{
+          headerTitle: "Chat",
+        }}
       />
       <Stack.Screen
         name="Settings"
