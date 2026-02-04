@@ -4,7 +4,7 @@
     <title>I-Claw - Your OpenClaw in Your Pocket</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="I-Claw is a beautiful mobile app that connects you to your OpenClaw AI assistant from anywhere. Control your personal AI from your iPhone." />
+    <meta name="description" content="I-Claw is a beautiful mobile app that connects you to your OpenClaw AI assistant from anywhere. Control your personal AI from your iPhone. Powered by $CLAW token." />
     <meta name="theme-color" content="#0F0F14" />
     <style>
       :root {
@@ -19,7 +19,9 @@
         --text-secondary: #9CA3AF;
         --text-tertiary: #6B7280;
         --success: #10B981;
+        --warning: #F59E0B;
         --border: #2A2A3A;
+        --gold: #FFD700;
       }
 
       * {
@@ -104,6 +106,24 @@
         font-size: 22px;
         font-weight: 700;
         letter-spacing: -0.5px;
+      }
+
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 32px;
+      }
+
+      .nav-link {
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        transition: color 0.2s;
+      }
+
+      .nav-link:hover {
+        color: var(--text-primary);
       }
 
       .nav-cta {
@@ -235,6 +255,25 @@
       .btn-secondary:hover {
         background: var(--bg-elevated);
         border-color: var(--primary);
+      }
+
+      .btn-gold {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 16px 32px;
+        background: linear-gradient(135deg, #FFD700, #FFA500);
+        color: #000;
+        text-decoration: none;
+        border-radius: 30px;
+        font-weight: 700;
+        font-size: 16px;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+
+      .btn-gold:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 32px rgba(255, 215, 0, 0.4);
       }
 
       .btn-icon {
@@ -474,11 +513,330 @@
         font-weight: 500;
       }
 
+      /* Token Section */
+      .token {
+        position: relative;
+        z-index: 1;
+        padding: 100px 24px;
+        background: linear-gradient(180deg, var(--bg-root) 0%, rgba(99, 102, 241, 0.1) 50%, var(--bg-root) 100%);
+      }
+
+      .token-content {
+        max-width: 1000px;
+        margin: 0 auto;
+      }
+
+      .token-header {
+        text-align: center;
+        margin-bottom: 60px;
+      }
+
+      .token-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.2));
+        border: 1px solid rgba(255, 215, 0, 0.3);
+        border-radius: 20px;
+        font-size: 13px;
+        color: var(--gold);
+        margin-bottom: 24px;
+        font-weight: 600;
+      }
+
+      .token-header h2 {
+        font-size: clamp(36px, 6vw, 56px);
+        font-weight: 800;
+        letter-spacing: -2px;
+        margin-bottom: 16px;
+      }
+
+      .token-header h2 .highlight {
+        background: linear-gradient(135deg, #FFD700, #FFA500);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .token-header p {
+        color: var(--text-secondary);
+        font-size: 20px;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      .token-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 24px;
+        margin-bottom: 48px;
+      }
+
+      .token-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 32px;
+        text-align: center;
+      }
+
+      .token-card.featured {
+        border-color: var(--gold);
+        background: linear-gradient(180deg, var(--bg-surface) 0%, rgba(255, 215, 0, 0.05) 100%);
+      }
+
+      .token-card-icon {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 20px;
+        background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .token-card.featured .token-card-icon {
+        background: linear-gradient(135deg, #FFD700, #FFA500);
+      }
+
+      .token-card-icon svg {
+        width: 32px;
+        height: 32px;
+        color: white;
+      }
+
+      .token-card h3 {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 12px;
+      }
+
+      .token-card p {
+        color: var(--text-secondary);
+        font-size: 15px;
+        line-height: 1.6;
+      }
+
+      .tokenomics {
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 40px;
+        margin-bottom: 48px;
+      }
+
+      .tokenomics h3 {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 32px;
+        text-align: center;
+      }
+
+      .tokenomics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 24px;
+      }
+
+      .tokenomics-item {
+        text-align: center;
+      }
+
+      .tokenomics-value {
+        font-size: 36px;
+        font-weight: 800;
+        background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 8px;
+      }
+
+      .tokenomics-label {
+        color: var(--text-secondary);
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .token-cta {
+        text-align: center;
+      }
+
+      .token-cta-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        justify-content: center;
+      }
+
+      /* Roadmap Section */
+      .roadmap {
+        position: relative;
+        z-index: 1;
+        padding: 80px 24px;
+        background: var(--bg-surface);
+      }
+
+      .roadmap-timeline {
+        max-width: 800px;
+        margin: 0 auto;
+        position: relative;
+      }
+
+      .roadmap-timeline::before {
+        content: '';
+        position: absolute;
+        left: 24px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: linear-gradient(180deg, var(--gradient-start), var(--gradient-end));
+      }
+
+      .roadmap-item {
+        position: relative;
+        padding-left: 72px;
+        padding-bottom: 48px;
+      }
+
+      .roadmap-item:last-child {
+        padding-bottom: 0;
+      }
+
+      .roadmap-dot {
+        position: absolute;
+        left: 12px;
+        top: 4px;
+        width: 24px;
+        height: 24px;
+        background: var(--bg-root);
+        border: 3px solid var(--primary);
+        border-radius: 50%;
+      }
+
+      .roadmap-item.completed .roadmap-dot {
+        background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+        border-color: var(--gradient-end);
+      }
+
+      .roadmap-item.current .roadmap-dot {
+        background: var(--gold);
+        border-color: var(--gold);
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+      }
+
+      .roadmap-phase {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--primary);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+      }
+
+      .roadmap-item.current .roadmap-phase {
+        color: var(--gold);
+      }
+
+      .roadmap-title {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 12px;
+      }
+
+      .roadmap-list {
+        list-style: none;
+      }
+
+      .roadmap-list li {
+        color: var(--text-secondary);
+        font-size: 15px;
+        padding: 6px 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .roadmap-list li svg {
+        width: 16px;
+        height: 16px;
+        color: var(--success);
+        flex-shrink: 0;
+      }
+
+      .roadmap-item.completed .roadmap-list li svg {
+        color: var(--success);
+      }
+
+      .roadmap-item:not(.completed) .roadmap-list li svg {
+        color: var(--text-tertiary);
+      }
+
+      /* Community Section */
+      .community {
+        position: relative;
+        z-index: 1;
+        padding: 80px 24px;
+      }
+
+      .community-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      .community-link {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        padding: 32px 24px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        text-decoration: none;
+        color: var(--text-primary);
+        transition: transform 0.2s, border-color 0.2s, background 0.2s;
+      }
+
+      .community-link:hover {
+        transform: translateY(-4px);
+        border-color: var(--primary);
+        background: var(--bg-elevated);
+      }
+
+      .community-link svg {
+        width: 40px;
+        height: 40px;
+        color: var(--text-secondary);
+        transition: color 0.2s;
+      }
+
+      .community-link:hover svg {
+        color: var(--primary);
+      }
+
+      .community-link span {
+        font-weight: 600;
+        font-size: 16px;
+      }
+
+      .community-link small {
+        color: var(--text-tertiary);
+        font-size: 13px;
+      }
+
+      /* Download Section */
       .download {
         position: relative;
         z-index: 1;
         padding: 100px 24px;
         text-align: center;
+        background: var(--bg-surface);
       }
 
       .download-content {
@@ -500,7 +858,7 @@
       }
 
       .qr-container {
-        background: var(--bg-surface);
+        background: var(--bg-root);
         border: 1px solid var(--border);
         border-radius: 24px;
         padding: 32px;
@@ -539,7 +897,7 @@
         align-items: center;
         gap: 12px;
         padding: 14px 24px;
-        background: var(--bg-surface);
+        background: var(--bg-root);
         border: 1px solid var(--border);
         border-radius: 12px;
         text-decoration: none;
@@ -575,9 +933,28 @@
       footer {
         position: relative;
         z-index: 1;
-        padding: 40px 24px;
+        padding: 60px 24px;
         text-align: center;
         border-top: 1px solid var(--border);
+      }
+
+      .footer-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 32px;
+        justify-content: center;
+        margin-bottom: 24px;
+      }
+
+      .footer-links a {
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-size: 14px;
+        transition: color 0.2s;
+      }
+
+      .footer-links a:hover {
+        color: var(--text-primary);
       }
 
       footer p {
@@ -594,9 +971,47 @@
         text-decoration: underline;
       }
 
+      .loading {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: var(--bg-root);
+        z-index: 1000;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+      }
+
+      .loading.active {
+        display: flex;
+      }
+
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid var(--border);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      .loading-text {
+        color: var(--text-secondary);
+        font-size: 16px;
+      }
+
       @media (max-width: 768px) {
         nav {
           padding: 16px 20px;
+        }
+
+        .nav-links {
+          display: none;
         }
 
         .logo-text {
@@ -616,13 +1031,35 @@
           max-width: 260px;
         }
 
-        .features, .capabilities, .download {
+        .features, .capabilities, .download, .token, .roadmap, .community {
           padding: 60px 20px;
         }
 
         .qr-code {
           width: 180px;
           height: 180px;
+        }
+
+        .roadmap-timeline::before {
+          left: 16px;
+        }
+
+        .roadmap-item {
+          padding-left: 56px;
+        }
+
+        .roadmap-dot {
+          left: 4px;
+          width: 20px;
+          height: 20px;
+        }
+
+        .tokenomics {
+          padding: 24px;
+        }
+
+        .tokenomics-value {
+          font-size: 28px;
         }
       }
     </style>
@@ -631,12 +1068,23 @@
     <div class="gradient-orb orb-1"></div>
     <div class="gradient-orb orb-2"></div>
 
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <div class="loading-text">Opening in Expo Go...</div>
+    </div>
+
     <nav>
       <div class="nav-content">
         <a href="#" class="logo">
           <img src="assets/images/icon.png" alt="I-Claw" class="logo-icon" />
           <span class="logo-text">I-Claw</span>
         </a>
+        <div class="nav-links">
+          <a href="#features" class="nav-link">Features</a>
+          <a href="#token" class="nav-link">Token</a>
+          <a href="#roadmap" class="nav-link">Roadmap</a>
+          <a href="#community" class="nav-link">Community</a>
+        </div>
         <a href="#download" class="nav-cta">
           Get the App
           <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -654,7 +1102,7 @@
         </div>
         <h1>Your <span>OpenClaw</span><br />in Your Pocket</h1>
         <p class="hero-subtitle">
-          I-Claw is a beautiful mobile companion for OpenClaw. Control your personal AI assistant from anywhere, anytime.
+          I-Claw is a beautiful mobile companion for OpenClaw. Control your personal AI assistant from anywhere, anytime. Powered by <strong>$CLAW</strong> token.
         </p>
         <div class="hero-buttons">
           <a href="#download" class="btn-primary">
@@ -663,11 +1111,11 @@
             </svg>
             Download Now
           </a>
-          <a href="https://openclaw.ai" target="_blank" class="btn-secondary">
-            Learn about OpenClaw
+          <a href="#token" class="btn-gold">
             <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
+            Buy $CLAW
           </a>
         </div>
 
@@ -700,7 +1148,7 @@
       </div>
     </section>
 
-    <section class="features">
+    <section class="features" id="features">
       <div class="section-header">
         <h2>Why I-Claw?</h2>
         <p>The simplest way to access your OpenClaw assistant on the go</p>
@@ -809,6 +1257,230 @@
       </div>
     </section>
 
+    <section class="token" id="token">
+      <div class="token-content">
+        <div class="token-header">
+          <div class="token-badge">$CLAW TOKEN</div>
+          <h2>Power Up with <span class="highlight">$CLAW</span></h2>
+          <p>The native token of the I-Claw ecosystem. Earn, hold, and unlock premium features.</p>
+        </div>
+
+        <div class="token-grid">
+          <div class="token-card">
+            <div class="token-card-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path>
+              </svg>
+            </div>
+            <h3>Earn Daily</h3>
+            <p>Get $CLAW tokens just by using the app. Daily logins, usage streaks, and achievements all earn rewards.</p>
+          </div>
+          <div class="token-card featured">
+            <div class="token-card-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+              </svg>
+            </div>
+            <h3>Unlock Pro</h3>
+            <p>Hold 1,000+ $CLAW to unlock Pro features: unlimited messages, priority AI, and exclusive capabilities.</p>
+          </div>
+          <div class="token-card">
+            <div class="token-card-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+              </svg>
+            </div>
+            <h3>Refer & Earn</h3>
+            <p>Invite friends and earn 100 $CLAW per referral. Your friends get 50 $CLAW too. Everyone wins.</p>
+          </div>
+        </div>
+
+        <div class="tokenomics">
+          <h3>Tokenomics</h3>
+          <div class="tokenomics-grid">
+            <div class="tokenomics-item">
+              <div class="tokenomics-value">1B</div>
+              <div class="tokenomics-label">Total Supply</div>
+            </div>
+            <div class="tokenomics-item">
+              <div class="tokenomics-value">40%</div>
+              <div class="tokenomics-label">Community Rewards</div>
+            </div>
+            <div class="tokenomics-item">
+              <div class="tokenomics-value">30%</div>
+              <div class="tokenomics-label">Liquidity Pool</div>
+            </div>
+            <div class="tokenomics-item">
+              <div class="tokenomics-value">20%</div>
+              <div class="tokenomics-label">Development</div>
+            </div>
+            <div class="tokenomics-item">
+              <div class="tokenomics-value">10%</div>
+              <div class="tokenomics-label">Team (Vested)</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="token-cta">
+          <div class="token-cta-buttons">
+            <a href="https://bags.fm" target="_blank" class="btn-gold">
+              <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+              </svg>
+              Buy on Bags
+            </a>
+            <a href="#" class="btn-secondary">
+              <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              View Contract
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="roadmap" id="roadmap">
+      <div class="section-header">
+        <h2>Roadmap</h2>
+        <p>Our journey to building the ultimate AI companion</p>
+      </div>
+      <div class="roadmap-timeline">
+        <div class="roadmap-item completed">
+          <div class="roadmap-dot"></div>
+          <div class="roadmap-phase">Phase 1 - Foundation</div>
+          <div class="roadmap-title">Launch</div>
+          <ul class="roadmap-list">
+            <li>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              I-Claw mobile app development
+            </li>
+            <li>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              OpenClaw Gateway integration
+            </li>
+            <li>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              Landing page & branding
+            </li>
+            <li>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              Expo Go distribution
+            </li>
+          </ul>
+        </div>
+
+        <div class="roadmap-item current">
+          <div class="roadmap-dot"></div>
+          <div class="roadmap-phase">Phase 2 - Token Launch</div>
+          <div class="roadmap-title">$CLAW Ecosystem</div>
+          <ul class="roadmap-list">
+            <li>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              $CLAW token launch on Bags
+            </li>
+            <li>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              Wallet integration (Phantom/Solflare)
+            </li>
+            <li>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              Token-gated Pro features
+            </li>
+            <li>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              Referral rewards system
+            </li>
+          </ul>
+        </div>
+
+        <div class="roadmap-item">
+          <div class="roadmap-dot"></div>
+          <div class="roadmap-phase">Phase 3 - Growth</div>
+          <div class="roadmap-title">Expansion</div>
+          <ul class="roadmap-list">
+            <li>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              App Store & Google Play release
+            </li>
+            <li>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              Daily rewards & gamification
+            </li>
+            <li>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              Community governance
+            </li>
+            <li>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              Partnership announcements
+            </li>
+          </ul>
+        </div>
+
+        <div class="roadmap-item">
+          <div class="roadmap-dot"></div>
+          <div class="roadmap-phase">Phase 4 - Future</div>
+          <div class="roadmap-title">Beyond</div>
+          <ul class="roadmap-list">
+            <li>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              Multi-AI assistant support
+            </li>
+            <li>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              Voice commands & Siri integration
+            </li>
+            <li>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              Apple Watch companion
+            </li>
+            <li>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              NFT achievements & collectibles
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="community" id="community">
+      <div class="section-header">
+        <h2>Join the Community</h2>
+        <p>Connect with other I-Claw users and stay updated</p>
+      </div>
+      <div class="community-grid">
+        <a href="https://twitter.com" target="_blank" class="community-link">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+          <span>X (Twitter)</span>
+          <small>@iclawapp</small>
+        </a>
+        <a href="https://discord.gg" target="_blank" class="community-link">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+          </svg>
+          <span>Discord</span>
+          <small>Join our server</small>
+        </a>
+        <a href="https://t.me" target="_blank" class="community-link">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+          </svg>
+          <span>Telegram</span>
+          <small>@iclawcommunity</small>
+        </a>
+        <a href="https://github.com" target="_blank" class="community-link">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+          </svg>
+          <span>GitHub</span>
+          <small>Open source</small>
+        </a>
+      </div>
+    </section>
+
     <section class="download" id="download">
       <div class="download-content">
         <h2>Get I-Claw Now</h2>
@@ -843,18 +1515,26 @@
     </section>
 
     <footer>
+      <div class="footer-links">
+        <a href="#features">Features</a>
+        <a href="#token">Token</a>
+        <a href="#roadmap">Roadmap</a>
+        <a href="#community">Community</a>
+        <a href="https://openclaw.ai" target="_blank">OpenClaw</a>
+      </div>
       <p>
         I-Claw is a companion app for <a href="https://openclaw.ai" target="_blank">OpenClaw</a>.<br />
-        Built with Expo and React Native.
+        Built with Expo and React Native. Powered by $CLAW.
       </p>
     </footer>
 
-    <!-- UPDATE THIS URL: Replace YOUR_EXPO_URL with your actual Expo app URL -->
     <script src="https://unpkg.com/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
     <script>
       (function() {
-        // IMPORTANT: Update this to your I-Claw app's Expo URL
         const deepLink = "exps://YOUR_EXPO_URL_HERE";
+        const ua = navigator.userAgent;
+        const isAndroid = /Android/i.test(ua);
+        const isIOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
         const qrCode = new QRCodeStyling({
           width: 400,
@@ -887,6 +1567,15 @@
         });
 
         qrCode.append(document.getElementById("qr-code"));
+
+        if (isAndroid || isIOS) {
+          const loadingEl = document.getElementById("loading");
+          loadingEl.classList.add("active");
+          window.location.href = deepLink;
+          setTimeout(() => {
+            loadingEl.classList.remove("active");
+          }, 1500);
+        }
       })();
     </script>
   </body>

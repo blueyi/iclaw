@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:http";
 import { storage } from "./storage";
 
 const DEFAULT_CONVERSATION_ID = "default";
+const PRO_TOKEN_THRESHOLD = 1000;
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/messages", async (req, res) => {
@@ -116,6 +117,197 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating settings:", error);
       res.status(500).json({ error: "Failed to update settings" });
+    }
+  });
+
+  app.post("/api/profile", async (req, res) => {
+    try {
+      const { walletAddress, referralCode } = req.body;
+      const profile = await storage.getOrCreateProfile(walletAddress, referralCode);
+      const streak = await storage.getStreak(profile.id);
+      const canClaim = await storage.canClaimToday(profile.id);
+      
+      const isPro = profile.currentTokenBalance >= PRO_TOKEN_THRESHOLD || profile.isPro;
+      
+      res.json({
+        profile: {
+          ...profile,
+          isPro,
+        },
+        streak,
+        canClaimDailyReward: canClaim,
+        proThreshold: PRO_TOKEN_THRESHOLD,
+      });
+    } catch (error) {
+      console.error("Error creating/fetching profile:", error);
+      res.status(500).json({ error: "Failed to create/fetch profile" });
+    }
+  });
+
+  app.get("/api/profile/:id", async (req, res) => {
+    try {
+      const profile = await storage.getProfileById(req.params.id);
+      if (!profile) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+      
+      const streak = await storage.getStreak(profile.id);
+      const canClaim = await storage.canClaimToday(profile.id);
+      const isPro = profile.currentTokenBalance >= PRO_TOKEN_THRESHOLD || profile.isPro;
+      
+      res.json({
+        profile: {
+          ...profile,
+          isPro,
+        },
+        streak,
+        canClaimDailyReward: canClaim,
+        proThreshold: PRO_TOKEN_THRESHOLD,
+      });
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  app.get("/api/profile/wallet/:address", async (req, res) => {
+    try {
+      const profile = await storage.getProfileByWallet(req.params.address);
+      if (!profile) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+      
+      const streak = await storage.getStreak(profile.id);
+      const canClaim = await storage.canClaimToday(profile.id);
+      const isPro = profile.currentTokenBalance >= PRO_TOKEN_THRESHOLD || profile.isPro;
+      
+      res.json({
+        profile: {
+          ...profile,
+          isPro,
+        },
+        streak,
+        canClaimDailyReward: canClaim,
+        proThreshold: PRO_TOKEN_THRESHOLD,
+      });
+    } catch (error) {
+      console.error("Error fetching profile by wallet:", error);
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  app.put("/api/profile/:id/wallet", async (req, res) => {
+    try {
+      const { walletAddress } = req.body;
+      if (!walletAddress) {
+        return res.status(400).json({ error: "Wallet address is required" });
+      }
+      
+      const profile = await storage.updateProfile(req.params.id, { walletAddress });
+      res.json(profile);
+    } catch (error) {
+      console.error("Error updating wallet:", error);
+      res.status(500).json({ error: "Failed to update wallet" });
+    }
+  });
+
+  app.post("/api/rewards/claim", async (req, res) => {
+    try {
+      const { profileId } = req.body;
+      if (!profileId) {
+        return res.status(400).json({ error: "Profile ID is required" });
+      }
+      
+      const result = await storage.claimDailyReward(profileId);
+      const profile = await storage.getProfileById(profileId);
+      
+      res.json({
+        success: true,
+        tokensEarned: result.tokensEarned,
+        streak: result.streak,
+        newBalance: profile?.currentTokenBalance || 0,
+      });
+    } catch (error: any) {
+      console.error("Error claiming reward:", error);
+      if (error.message === "Already claimed today's reward") {
+        return res.status(400).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to claim reward" });
+    }
+  });
+
+  app.get("/api/rewards/status/:profileId", async (req, res) => {
+    try {
+      const profile = await storage.getProfileById(req.params.profileId);
+      if (!profile) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+      
+      const streak = await storage.getStreak(profile.id);
+      const canClaim = await storage.canClaimToday(profile.id);
+      
+      const nextMultiplier = streak ? Math.min(Math.floor((streak.currentStreak + 1) / 7) + 1, 5) : 1;
+      const nextReward = 10 * nextMultiplier;
+      
+      res.json({
+        canClaim,
+        currentStreak: streak?.currentStreak || 0,
+        longestStreak: streak?.longestStreak || 0,
+        totalDaysClaimed: streak?.totalDaysClaimed || 0,
+        lastClaimDate: streak?.lastClaimDate,
+        nextReward,
+        nextMultiplier,
+      });
+    } catch (error) {
+      console.error("Error fetching reward status:", error);
+      res.status(500).json({ error: "Failed to fetch reward status" });
+    }
+  });
+
+  app.get("/api/referrals/:profileId", async (req, res) => {
+    try {
+      const profile = await storage.getProfileById(req.params.profileId);
+      if (!profile) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+      
+      const referrals = await storage.getReferralsByReferrer(profile.id);
+      
+      res.json({
+        referralCode: profile.referralCode,
+        totalReferrals: referrals.length,
+        completedReferrals: referrals.filter(r => r.status === "completed").length,
+        pendingReferrals: referrals.filter(r => r.status === "pending").length,
+        totalEarned: referrals.filter(r => r.status === "completed").reduce((sum, r) => sum + r.referrerReward, 0),
+        referrals,
+      });
+    } catch (error) {
+      console.error("Error fetching referrals:", error);
+      res.status(500).json({ error: "Failed to fetch referrals" });
+    }
+  });
+
+  app.get("/api/transactions/:profileId", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const transactions = await storage.getTransactions(req.params.profileId, limit);
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+      res.status(500).json({ error: "Failed to fetch transactions" });
+    }
+  });
+
+  app.get("/api/referral/validate/:code", async (req, res) => {
+    try {
+      const profile = await storage.getProfileByReferralCode(req.params.code.toUpperCase());
+      if (!profile) {
+        return res.json({ valid: false });
+      }
+      res.json({ valid: true });
+    } catch (error) {
+      console.error("Error validating referral code:", error);
+      res.status(500).json({ error: "Failed to validate referral code" });
     }
   });
 
