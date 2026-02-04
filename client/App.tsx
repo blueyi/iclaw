@@ -1,6 +1,6 @@
 import React from "react";
 import { StyleSheet } from "react-native";
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -11,6 +11,21 @@ import { queryClient } from "@/lib/query-client";
 
 import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { Colors } from "@/constants/theme";
+
+const DarkTheme = {
+  ...DefaultTheme,
+  dark: true,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: Colors.dark.link,
+    background: Colors.dark.backgroundRoot,
+    card: Colors.dark.backgroundDefault,
+    text: Colors.dark.text,
+    border: Colors.dark.border,
+    notification: Colors.dark.error,
+  },
+};
 
 export default function App() {
   return (
@@ -19,10 +34,10 @@ export default function App() {
         <SafeAreaProvider>
           <GestureHandlerRootView style={styles.root}>
             <KeyboardProvider>
-              <NavigationContainer>
+              <NavigationContainer theme={DarkTheme}>
                 <RootStackNavigator />
               </NavigationContainer>
-              <StatusBar style="auto" />
+              <StatusBar style="light" />
             </KeyboardProvider>
           </GestureHandlerRootView>
         </SafeAreaProvider>
@@ -34,5 +49,6 @@ export default function App() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    backgroundColor: Colors.dark.backgroundRoot,
   },
 });

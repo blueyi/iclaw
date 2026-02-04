@@ -1,30 +1,43 @@
 import { Platform } from "react-native";
 
-const tintColorLight = "#007AFF";
-const tintColorDark = "#0A84FF";
-
 export const Colors = {
   light: {
-    text: "#11181C",
+    text: "#FFFFFF",
+    textSecondary: "#9CA3AF",
+    textTertiary: "#6B7280",
     buttonText: "#FFFFFF",
-    tabIconDefault: "#687076",
-    tabIconSelected: tintColorLight,
-    link: "#007AFF",
-    backgroundRoot: "#FFFFFF", // Elevation 0
-    backgroundDefault: "#F2F2F2", // Elevation 1
-    backgroundSecondary: "#E6E6E6", // Elevation 2
-    backgroundTertiary: "#D9D9D9", // Elevation 3
+    tabIconDefault: "#6B7280",
+    tabIconSelected: "#6366F1",
+    link: "#6366F1",
+    linkDark: "#4F46E5",
+    backgroundRoot: "#0F0F14",
+    backgroundDefault: "#1A1A24",
+    backgroundSecondary: "#252530",
+    backgroundTertiary: "#303040",
+    gradientStart: "#6366F1",
+    gradientEnd: "#8B5CF6",
+    success: "#10B981",
+    error: "#EF4444",
+    border: "#2A2A3A",
   },
   dark: {
-    text: "#ECEDEE",
+    text: "#FFFFFF",
+    textSecondary: "#9CA3AF",
+    textTertiary: "#6B7280",
     buttonText: "#FFFFFF",
-    tabIconDefault: "#9BA1A6",
-    tabIconSelected: tintColorDark,
-    link: "#0A84FF",
-    backgroundRoot: "#1F2123", // Elevation 0
-    backgroundDefault: "#2A2C2E", // Elevation 1
-    backgroundSecondary: "#353739", // Elevation 2
-    backgroundTertiary: "#404244", // Elevation 3
+    tabIconDefault: "#6B7280",
+    tabIconSelected: "#6366F1",
+    link: "#6366F1",
+    linkDark: "#4F46E5",
+    backgroundRoot: "#0F0F14",
+    backgroundDefault: "#1A1A24",
+    backgroundSecondary: "#252530",
+    backgroundTertiary: "#303040",
+    gradientStart: "#6366F1",
+    gradientEnd: "#8B5CF6",
+    success: "#10B981",
+    error: "#EF4444",
+    border: "#2A2A3A",
   },
 };
 
@@ -40,6 +53,7 @@ export const Spacing = {
   "5xl": 48,
   inputHeight: 48,
   buttonHeight: 52,
+  messageBubbleMaxWidth: "75%",
 };
 
 export const BorderRadius = {
@@ -51,9 +65,15 @@ export const BorderRadius = {
   "2xl": 40,
   "3xl": 50,
   full: 9999,
+  message: 20,
 };
 
 export const Typography = {
+  title: {
+    fontSize: 28,
+    lineHeight: 36,
+    fontWeight: "700" as const,
+  },
   h1: {
     fontSize: 32,
     lineHeight: 40,
@@ -84,6 +104,11 @@ export const Typography = {
     lineHeight: 20,
     fontWeight: "400" as const,
   },
+  caption: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "400" as const,
+  },
   link: {
     fontSize: 16,
     lineHeight: 24,
@@ -91,15 +116,28 @@ export const Typography = {
   },
 };
 
+export const Shadows = {
+  inputBar: {
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  card: {
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+};
+
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: "system-ui",
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: "ui-serif",
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: "ui-rounded",
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: "ui-monospace",
   },
   default: {

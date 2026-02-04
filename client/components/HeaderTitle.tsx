@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleSheet, Image } from "react-native";
 
 import { ThemedText } from "@/components/ThemedText";
-import { Spacing } from "@/constants/theme";
+import { Colors, Spacing, Typography } from "@/constants/theme";
 
 interface HeaderTitleProps {
   title: string;
@@ -25,15 +25,17 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-start",
+    justifyContent: "center",
   },
   icon: {
     width: 28,
     height: 28,
     marginRight: Spacing.sm,
+    borderRadius: 6,
   },
   title: {
-    fontSize: 17,
+    ...Typography.h4,
+    color: Colors.dark.text,
     fontWeight: "600",
   },
 });
