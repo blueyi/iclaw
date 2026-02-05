@@ -18,7 +18,7 @@ import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import { useProfile } from '@/contexts/ProfileContext';
 import { useTheme } from '@/hooks/useTheme';
-import { Colors, Spacing, BorderRadius, Typography } from '@/constants/theme';
+import { Colors, Gradients, Spacing, BorderRadius, Typography } from '@/constants/theme';
 import { getApiUrl } from '@/lib/query-client';
 
 interface ReferralStats {
@@ -139,7 +139,7 @@ export default function RewardsScreen() {
     >
       <View style={styles.balanceCard}>
         <LinearGradient
-          colors={[Colors.dark.gradientStart, Colors.dark.gradientEnd]}
+          colors={Gradients.primary}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.balanceGradient}
@@ -292,7 +292,7 @@ export default function RewardsScreen() {
 
         <Pressable style={styles.shareButton} onPress={handleShare} testID="button-share-referral">
           <LinearGradient
-            colors={[Colors.dark.gradientStart, Colors.dark.gradientEnd]}
+            colors={Gradients.primary}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.shareButtonGradient}

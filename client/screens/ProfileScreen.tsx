@@ -20,7 +20,7 @@ import * as Haptics from 'expo-haptics';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { useTheme } from '@/hooks/useTheme';
 import { useProfile } from '@/contexts/ProfileContext';
-import { Colors, Spacing, BorderRadius, Typography } from '@/constants/theme';
+import { Colors, Gradients, Spacing, BorderRadius, Typography } from '@/constants/theme';
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -134,7 +134,7 @@ export default function ProfileScreen() {
                 disabled={connecting}
               >
                 <LinearGradient
-                  colors={[Colors.dark.gradientStart, Colors.dark.gradientEnd]}
+                  colors={Gradients.primary}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.connectButtonGradient}

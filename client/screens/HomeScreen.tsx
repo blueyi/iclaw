@@ -11,7 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { useTheme } from '@/hooks/useTheme';
 import { useProfile } from '@/contexts/ProfileContext';
-import { Colors, Spacing, BorderRadius, Typography } from '@/constants/theme';
+import { Colors, Gradients, Spacing, BorderRadius, Typography } from '@/constants/theme';
 import type { RootStackParamList } from '@/navigation/RootStackNavigator';
 
 export default function HomeScreen() {
@@ -42,7 +42,7 @@ export default function HomeScreen() {
     >
       <View style={styles.welcomeCard}>
         <LinearGradient
-          colors={[Colors.dark.gradientStart, Colors.dark.gradientEnd]}
+          colors={Gradients.primary}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.welcomeGradient}
@@ -58,7 +58,7 @@ export default function HomeScreen() {
             onPress={handleStartChat}
             testID="button-start-chat"
           >
-            <Feather name="message-circle" size={20} color={Colors.dark.gradientStart} />
+            <Feather name="message-circle" size={20} color={Colors.dark.primary} />
             <Text style={styles.startButtonText}>Start Chat</Text>
           </Pressable>
         </LinearGradient>
@@ -98,8 +98,8 @@ export default function HomeScreen() {
         <Text style={[styles.featuresTitle, { color: theme.text }]}>Features</Text>
         
         <View style={styles.featureItem}>
-          <View style={[styles.featureIcon, { backgroundColor: 'rgba(99, 102, 241, 0.15)' }]}>
-            <Feather name="zap" size={20} color="#6366F1" />
+          <View style={[styles.featureIcon, { backgroundColor: 'rgba(155, 92, 255, 0.15)' }]}>
+            <Feather name="zap" size={20} color={Colors.dark.primary} />
           </View>
           <View style={styles.featureContent}>
             <Text style={[styles.featureLabel, { color: theme.text }]}>AI Assistant</Text>
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
   },
   startButtonText: {
-    color: Colors.dark.gradientStart,
+    color: Colors.dark.primary,
     fontSize: 16,
     fontWeight: '700',
   },
