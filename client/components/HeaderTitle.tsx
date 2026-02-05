@@ -28,10 +28,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   icon: {
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     marginRight: Spacing.sm,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   title: {
     ...Typography.h4,
