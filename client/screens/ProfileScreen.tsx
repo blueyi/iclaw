@@ -82,7 +82,7 @@ export default function ProfileScreen() {
     >
       <View style={[styles.card, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
         <View style={styles.cardHeader}>
-          <Feather name="wallet" size={24} color={theme.link} />
+          <Feather name="credit-card" size={24} color={theme.link} />
           <Text style={[styles.cardTitle, { color: theme.text }]}>Wallet</Text>
         </View>
         

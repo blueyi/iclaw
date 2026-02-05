@@ -90,13 +90,13 @@ export const Colors = {
 };
 
 export const Gradients = {
-  primary: ["#9b5cff", "#6366f1"],
-  pageBackground: ["#0a0a12", "#0d0d18", "#0a0a12"],
-  phoneFrame: ["#1a1a24", "#12121a"],
-  aiBubble: ["rgba(155,92,255,0.35)", "rgba(99,102,241,0.3)"],
-  activeNav: ["rgba(155,92,255,0.18)", "rgba(99,102,241,0.12)"],
-  wordmarkUnderline: ["rgba(34,211,238,0.0)", "rgba(34,211,238,0.65)", "rgba(124,58,237,0.65)", "rgba(34,211,238,0.0)"],
-  gold: ["#FFD700", "#FFA500"],
+  primary: ["#9b5cff", "#6366f1"] as const,
+  pageBackground: ["#0a0a12", "#0d0d18", "#0a0a12"] as const,
+  phoneFrame: ["#1a1a24", "#12121a"] as const,
+  aiBubble: ["rgba(155,92,255,0.35)", "rgba(99,102,241,0.3)"] as const,
+  activeNav: ["rgba(155,92,255,0.18)", "rgba(99,102,241,0.12)"] as const,
+  wordmarkUnderline: ["rgba(34,211,238,0.0)", "rgba(34,211,238,0.65)", "rgba(124,58,237,0.65)", "rgba(34,211,238,0.0)"] as const,
+  gold: ["#FFD700", "#FFA500"] as const,
 };
 
 export const Glass = {
