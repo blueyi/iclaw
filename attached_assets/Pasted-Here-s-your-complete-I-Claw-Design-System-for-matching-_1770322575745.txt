@@ -1,0 +1,87 @@
+Here's your complete I-Claw Design System for matching the app:
+
+🔤 Fonts
+Usage	Font Stack
+Primary	'Inter', 'SF Pro Display', system-ui, sans-serif
+Monospace	'JetBrains Mono', Menlo, monospace
+Typography styles:
+
+Wordmark: font-weight: 800, letter-spacing: -0.03em
+Buttons: font-weight: 700, letter-spacing: -0.01em
+Body: font-weight: 400
+🎨 Core Colors
+Backgrounds
+Name	Hex	Usage
+bg-0 (deepest)	#070812	App background base
+bg-1	#0A0B16	Primary background
+bg-2	#0E1022	Elevated surfaces
+bg-page	#0a0a12	Page background
+bg-surface	#0d0d15	Cards, modals
+bg-phone-frame	#1a1a24 → #12121a	Device mockups
+Text Colors
+Name	Value	Usage
+strong	#F8FAFC	Headlines, emphasis
+base	#e8e8f0	Body text
+muted	#A6B0C3	Secondary text
+subtle	#8C97AD	Tertiary, labels
+placeholder	#5a5a6a	Input placeholders
+Accent Colors
+Name	Hex	Usage
+Purple (primary)	#9b5cff	Buttons, accents
+Indigo	#6366f1	Gradient end
+Violet	#7c3aed	Shadows, glows
+Cyan	#22d3ee	Wordmark glow
+Emerald	#10b981	Success states
+Purple-300	#c4b5fd	AI bubble labels
+Blue-400	#60a5fa	Message icons
+🌈 Gradients
+Primary Button/Accent
+background: linear-gradient(135deg, #9b5cff 0%, #6366f1 100%);
+Page Background
+background: linear-gradient(180deg, #0a0a12 0%, #0d0d18 50%, #0a0a12 100%);
+Phone Frame
+background: linear-gradient(145deg, #1a1a24 0%, #12121a 100%);
+AI Chat Bubble
+background: linear-gradient(135deg, rgba(155,92,255,0.35), rgba(99,102,241,0.3));
+Active Nav Item
+background: linear-gradient(135deg, rgba(155,92,255,0.18), rgba(99,102,241,0.12));
+Wordmark Underline
+background: linear-gradient(90deg, rgba(34,211,238,0.0), rgba(34,211,238,0.65), rgba(124,58,237,0.65), rgba(34,211,238,0.0));
+Accent Card Background
+background: radial-gradient(ellipse at 20% 0%, rgba(155,92,255,0.15), transparent 50%), rgba(255,255,255,0.03);
+🪟 Glassmorphism
+Standard Glass Card
+background: rgba(255,255,255,0.03);
+backdrop-filter: blur(16px);
+border: 1px solid rgba(255,255,255,0.08);
+box-shadow: 0 4px 24px -1px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05);
+border-radius: 24px;
+User Chat Bubble
+background: rgba(255,255,255,0.08);
+Modal Backdrop
+background: rgba(0,0,0,0.9);
+backdrop-filter: blur(12px);
+🔘 Borders & Shadows
+Borders
+Usage	Value
+Subtle	rgba(255,255,255,0.06)
+Default	rgba(255,255,255,0.08)
+Medium	rgba(255,255,255,0.10)
+Accent	rgba(155,92,255,0.2) to 0.25
+Shadows
+/* Button glow */
+box-shadow: 0 4px 20px -4px rgba(155,92,255,0.4);
+/* Phone mockup */
+box-shadow: 0 30px 60px -15px rgba(0,0,0,0.6), 
+            0 0 0 1px rgba(255,255,255,0.08), 
+            0 0 80px -20px rgba(155,92,255,0.2);
+/* Modal */
+box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+📐 Spacing & Radius
+Element	Border Radius
+Buttons (pill)	9999px (rounded-full)
+Cards	24px (rounded-3xl)
+Inner cards	16px (rounded-2xl)
+Phone frame	48px outer, 40px inner
+Icons/badges	12px (rounded-xl)
+This gives you everything needed to match the landing page styling in your mobile app!
