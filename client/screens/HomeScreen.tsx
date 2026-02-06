@@ -14,12 +14,19 @@ import { useProfile } from '@/contexts/ProfileContext';
 import { Colors, Gradients, Spacing, BorderRadius, Typography } from '@/constants/theme';
 import type { RootStackParamList } from '@/navigation/RootStackNavigator';
 
+const PRO_BENEFITS = [
+  { icon: 'message-circle' as const, label: 'Unlimited Messages', desc: 'No daily message limits', free: '20/day', pro: 'Unlimited' },
+  { icon: 'zap' as const, label: 'Priority AI', desc: 'Faster response times', free: 'Standard', pro: 'Priority' },
+  { icon: 'shield' as const, label: 'Advanced Features', desc: 'Access to Pro-only tools', free: 'Basic', pro: 'Full Access' },
+  { icon: 'star' as const, label: 'Pro Badge', desc: 'Stand out in the community', free: 'None', pro: 'Gold Badge' },
+];
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
-  const { profile, proThreshold } = useProfile();
+  const { profile, proThreshold, remainingMessages, messageLimit, canSendMessage } = useProfile();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const handleStartChat = () => {
@@ -29,6 +36,8 @@ export default function HomeScreen() {
   const progressTowardsPro = profile 
     ? Math.min((profile.currentTokenBalance / proThreshold) * 100, 100)
     : 0;
+
+  const isPro = profile?.isPro || false;
 
   return (
     <KeyboardAwareScrollViewCompat
@@ -61,6 +70,15 @@ export default function HomeScreen() {
             <Feather name="message-circle" size={20} color={Colors.dark.primary} />
             <Text style={styles.startButtonText}>Start Chat</Text>
           </Pressable>
+
+          {!isPro && profile ? (
+            <View style={styles.usageHint}>
+              <Feather name="info" size={14} color="rgba(255,255,255,0.7)" />
+              <Text style={styles.usageHintText}>
+                {remainingMessages} of {messageLimit} free messages remaining today
+              </Text>
+            </View>
+          ) : null}
         </LinearGradient>
       </View>
 
@@ -78,7 +96,7 @@ export default function HomeScreen() {
             <View style={[styles.statusDivider, { backgroundColor: theme.border }]} />
             <View style={styles.statusItem}>
               <View style={styles.proStatusRow}>
-                {profile.isPro ? (
+                {isPro ? (
                   <Feather name="check-circle" size={20} color={Colors.dark.success} />
                 ) : (
                   <Text style={[styles.statusValue, { color: theme.text }]}>
@@ -87,28 +105,65 @@ export default function HomeScreen() {
                 )}
               </View>
               <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>
-                {profile.isPro ? 'Pro Active' : 'To Pro'}
+                {isPro ? 'Pro Active' : 'To Pro'}
               </Text>
             </View>
           </View>
         </View>
       ) : null}
 
-      <View style={[styles.featuresCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
-        <Text style={[styles.featuresTitle, { color: theme.text }]}>Features</Text>
-        
-        <View style={styles.featureItem}>
-          <View style={[styles.featureIcon, { backgroundColor: 'rgba(155, 92, 255, 0.15)' }]}>
-            <Feather name="zap" size={20} color={Colors.dark.primary} />
-          </View>
-          <View style={styles.featureContent}>
-            <Text style={[styles.featureLabel, { color: theme.text }]}>AI Assistant</Text>
-            <Text style={[styles.featureDescription, { color: theme.textSecondary }]}>
-              Powered by OpenClaw Gateway
-            </Text>
-          </View>
+      <View style={[styles.proCompareCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+        <View style={styles.proCompareHeader}>
+          <Feather name="award" size={24} color="#FFD700" />
+          <Text style={[styles.proCompareTitle, { color: theme.text }]}>
+            {isPro ? 'Your Pro Benefits' : 'Unlock Pro'}
+          </Text>
+          {isPro ? (
+            <View style={styles.proBadge}>
+              <Text style={styles.proBadgeText}>ACTIVE</Text>
+            </View>
+          ) : null}
         </View>
 
+        {PRO_BENEFITS.map((benefit, index) => (
+          <View key={index} style={styles.benefitRow}>
+            <View style={[styles.benefitIcon, { backgroundColor: isPro ? 'rgba(255, 215, 0, 0.12)' : 'rgba(155, 92, 255, 0.12)' }]}>
+              <Feather name={benefit.icon} size={18} color={isPro ? '#FFD700' : Colors.dark.primary} />
+            </View>
+            <View style={styles.benefitContent}>
+              <Text style={[styles.benefitLabel, { color: theme.text }]}>{benefit.label}</Text>
+              <Text style={[styles.benefitDesc, { color: theme.textSecondary }]}>{benefit.desc}</Text>
+            </View>
+            <View style={styles.benefitTier}>
+              {isPro ? (
+                <Feather name="check" size={18} color={Colors.dark.success} />
+              ) : (
+                <Text style={[styles.benefitFree, { color: theme.textTertiary }]}>{benefit.free}</Text>
+              )}
+            </View>
+          </View>
+        ))}
+
+        {!isPro ? (
+          <View style={styles.proUpgradeSection}>
+            <View style={[styles.progressBar, { backgroundColor: theme.backgroundSecondary }]}>
+              <LinearGradient
+                colors={Gradients.gold}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.progressFill, { width: `${progressTowardsPro}%` }]}
+              />
+            </View>
+            <Text style={[styles.progressText, { color: theme.textSecondary }]}>
+              {profile?.currentTokenBalance || 0} / {proThreshold.toLocaleString()} $CLAW to Pro
+            </Text>
+          </View>
+        ) : null}
+      </View>
+
+      <View style={[styles.featuresCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+        <Text style={[styles.featuresTitle, { color: theme.text }]}>How to Earn $CLAW</Text>
+        
         <View style={styles.featureItem}>
           <View style={[styles.featureIcon, { backgroundColor: 'rgba(255, 215, 0, 0.15)' }]}>
             <Feather name="gift" size={20} color="#FFD700" />
@@ -116,7 +171,7 @@ export default function HomeScreen() {
           <View style={styles.featureContent}>
             <Text style={[styles.featureLabel, { color: theme.text }]}>Daily Rewards</Text>
             <Text style={[styles.featureDescription, { color: theme.textSecondary }]}>
-              Earn $CLAW tokens daily
+              Claim 10+ $CLAW every day with streak bonuses
             </Text>
           </View>
         </View>
@@ -126,21 +181,21 @@ export default function HomeScreen() {
             <Feather name="users" size={20} color="#10B981" />
           </View>
           <View style={styles.featureContent}>
-            <Text style={[styles.featureLabel, { color: theme.text }]}>Referral Program</Text>
+            <Text style={[styles.featureLabel, { color: theme.text }]}>Refer Friends</Text>
             <Text style={[styles.featureDescription, { color: theme.textSecondary }]}>
-              Invite friends, earn more
+              Earn 100 $CLAW per referral
             </Text>
           </View>
         </View>
 
         <View style={styles.featureItem}>
-          <View style={[styles.featureIcon, { backgroundColor: 'rgba(236, 72, 153, 0.15)' }]}>
-            <Feather name="award" size={20} color="#EC4899" />
+          <View style={[styles.featureIcon, { backgroundColor: 'rgba(155, 92, 255, 0.15)' }]}>
+            <Feather name="shopping-cart" size={20} color={Colors.dark.primary} />
           </View>
           <View style={styles.featureContent}>
-            <Text style={[styles.featureLabel, { color: theme.text }]}>Pro Access</Text>
+            <Text style={[styles.featureLabel, { color: theme.text }]}>Buy on Bags</Text>
             <Text style={[styles.featureDescription, { color: theme.textSecondary }]}>
-              Hold 1,000+ $CLAW for Pro
+              Purchase $CLAW tokens on Solana via Bags
             </Text>
           </View>
         </View>
@@ -186,6 +241,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  usageHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginTop: Spacing.md,
+  },
+  usageHintText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+  },
   statusCard: {
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
@@ -215,6 +280,82 @@ const styles = StyleSheet.create({
   proStatusRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  proCompareCard: {
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    padding: Spacing.xl,
+    marginBottom: Spacing.lg,
+  },
+  proCompareHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  proCompareTitle: {
+    ...Typography.h4,
+    flex: 1,
+  },
+  proBadge: {
+    backgroundColor: '#FFD700',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.xs,
+  },
+  proBadgeText: {
+    color: '#000',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  benefitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  benefitIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  benefitContent: {
+    flex: 1,
+  },
+  benefitLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  benefitDesc: {
+    fontSize: 12,
+  },
+  benefitTier: {
+    alignItems: 'flex-end',
+    minWidth: 60,
+  },
+  benefitFree: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  proUpgradeSection: {
+    marginTop: Spacing.md,
+    gap: Spacing.xs,
+  },
+  progressBar: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 12,
+    textAlign: 'center',
   },
   featuresCard: {
     borderRadius: BorderRadius.lg,

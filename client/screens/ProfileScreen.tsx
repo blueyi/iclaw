@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -6,9 +6,10 @@ import {
   Pressable, 
   ActivityIndicator,
   TextInput,
-  Alert,
   Platform,
   Linking,
+  ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -17,21 +18,57 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 
-import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { useTheme } from '@/hooks/useTheme';
 import { useProfile } from '@/contexts/ProfileContext';
 import { Colors, Gradients, Spacing, BorderRadius, Typography } from '@/constants/theme';
+import { getApiUrl } from '@/lib/query-client';
+
+interface TokenTransaction {
+  id: string;
+  profileId: string;
+  amount: number;
+  type: string;
+  description: string | null;
+  createdAt: string;
+}
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
-  const { profile, isLoading, connectWallet, refreshProfile, proThreshold } = useProfile();
+  const { profile, isLoading, connectWallet, refreshProfile, proThreshold, messagesUsed, messageLimit, remainingMessages } = useProfile();
   
   const [walletInput, setWalletInput] = useState('');
   const [showWalletInput, setShowWalletInput] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [transactions, setTransactions] = useState<TokenTransaction[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const isPro = profile?.isPro || false;
+
+  const loadTransactions = useCallback(async () => {
+    if (!profile) return;
+    try {
+      const response = await fetch(new URL(`/api/transactions/${profile.id}?limit=10`, getApiUrl()).toString());
+      if (response.ok) {
+        const data = await response.json();
+        setTransactions(data);
+      }
+    } catch (error) {
+      console.error('Error loading transactions:', error);
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    loadTransactions();
+  }, [loadTransactions]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([refreshProfile(), loadTransactions()]);
+    setRefreshing(false);
+  };
 
   const handleConnectWallet = async () => {
     if (!walletInput.trim()) return;
@@ -62,6 +99,20 @@ export default function ProfileScreen() {
     ? Math.min((profile.currentTokenBalance / proThreshold) * 100, 100)
     : 0;
 
+  const getTransactionIcon = (type: string) => {
+    switch (type) {
+      case 'daily_reward': return 'gift';
+      case 'referral': return 'users';
+      case 'referral_bonus': return 'user-plus';
+      case 'purchase': return 'shopping-cart';
+      default: return 'dollar-sign';
+    }
+  };
+
+  const getTransactionColor = (amount: number) => {
+    return amount > 0 ? Colors.dark.success : Colors.dark.error;
+  };
+
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -71,7 +122,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <KeyboardAwareScrollViewCompat
+    <ScrollView
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
       contentContainerStyle={{
         paddingTop: headerHeight + Spacing.xl,
@@ -79,7 +130,76 @@ export default function ProfileScreen() {
         paddingHorizontal: Spacing.lg,
       }}
       scrollIndicatorInsets={{ bottom: insets.bottom }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.link} />
+      }
     >
+      {isPro ? (
+        <View style={styles.proActiveCard}>
+          <LinearGradient
+            colors={Gradients.gold}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.proActiveGradient}
+          >
+            <Feather name="award" size={32} color="#000" />
+            <Text style={styles.proActiveTitle}>Pro Member</Text>
+            <Text style={styles.proActiveSubtitle}>
+              Unlimited messages and priority AI access
+            </Text>
+            <View style={styles.proActiveStats}>
+              <View style={styles.proActiveStat}>
+                <Text style={styles.proActiveStatValue}>
+                  {profile?.currentTokenBalance?.toLocaleString() || 0}
+                </Text>
+                <Text style={styles.proActiveStatLabel}>$CLAW</Text>
+              </View>
+              <View style={styles.proActiveStatDivider} />
+              <View style={styles.proActiveStat}>
+                <Text style={styles.proActiveStatValue}>{messagesUsed}</Text>
+                <Text style={styles.proActiveStatLabel}>Sent Today</Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+      ) : (
+        <View style={[styles.subscriptionCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+          <View style={styles.subscriptionHeader}>
+            <Feather name="lock" size={24} color="#FFD700" />
+            <Text style={[styles.subscriptionTitle, { color: theme.text }]}>Free Plan</Text>
+          </View>
+
+          <View style={styles.planDetails}>
+            <View style={styles.planRow}>
+              <Text style={[styles.planLabel, { color: theme.textSecondary }]}>Messages Today</Text>
+              <Text style={[styles.planValue, { color: theme.text }]}>
+                {messagesUsed} / {messageLimit}
+              </Text>
+            </View>
+            <View style={styles.planRow}>
+              <Text style={[styles.planLabel, { color: theme.textSecondary }]}>Remaining</Text>
+              <Text style={[styles.planValue, { color: remainingMessages > 5 ? Colors.dark.success : '#FFD700' }]}>
+                {remainingMessages}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.upgradeSection}>
+            <View style={[styles.progressBar, { backgroundColor: theme.backgroundSecondary }]}>
+              <LinearGradient
+                colors={Gradients.gold}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.progressFill, { width: `${progressTowardsPro}%` }]}
+              />
+            </View>
+            <Text style={[styles.progressText, { color: theme.textSecondary }]}>
+              {profile?.currentTokenBalance || 0} / {proThreshold.toLocaleString()} $CLAW to Pro
+            </Text>
+          </View>
+        </View>
+      )}
+
       <View style={[styles.card, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
         <View style={styles.cardHeader}>
           <Feather name="credit-card" size={24} color={theme.link} />
@@ -159,7 +279,7 @@ export default function ProfileScreen() {
               testID="button-connect-wallet"
             >
               <LinearGradient
-                colors={['#AB9FF2', '#7B3FE4']}
+                colors={['#AB9FF2', '#7B3FE4'] as const}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.phantomButtonGradient}
@@ -183,7 +303,7 @@ export default function ProfileScreen() {
         <View style={styles.cardHeader}>
           <Feather name="award" size={24} color="#FFD700" />
           <Text style={[styles.cardTitle, { color: theme.text }]}>$CLAW Status</Text>
-          {profile?.isPro ? (
+          {isPro ? (
             <View style={styles.proBadge}>
               <Text style={styles.proBadgeText}>PRO</Text>
             </View>
@@ -210,7 +330,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {!profile?.isPro ? (
+        {!isPro ? (
           <View style={styles.proProgress}>
             <View style={styles.proProgressHeader}>
               <Text style={[styles.proProgressLabel, { color: theme.textSecondary }]}>
@@ -222,7 +342,7 @@ export default function ProfileScreen() {
             </View>
             <View style={[styles.progressBar, { backgroundColor: theme.backgroundSecondary }]}>
               <LinearGradient
-                colors={['#FFD700', '#FFA500']}
+                colors={Gradients.gold}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={[styles.progressFill, { width: `${progressTowardsPro}%` }]}
@@ -242,6 +362,38 @@ export default function ProfileScreen() {
         )}
       </View>
 
+      {transactions.length > 0 ? (
+        <View style={[styles.card, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+          <View style={styles.cardHeader}>
+            <Feather name="list" size={24} color={theme.link} />
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Recent Activity</Text>
+          </View>
+          
+          {transactions.map((tx) => (
+            <View key={tx.id} style={styles.txRow}>
+              <View style={[styles.txIcon, { backgroundColor: 'rgba(155, 92, 255, 0.12)' }]}>
+                <Feather 
+                  name={getTransactionIcon(tx.type) as any} 
+                  size={16} 
+                  color={Colors.dark.primary} 
+                />
+              </View>
+              <View style={styles.txContent}>
+                <Text style={[styles.txDescription, { color: theme.text }]}>
+                  {tx.description || tx.type.replace(/_/g, ' ')}
+                </Text>
+                <Text style={[styles.txDate, { color: theme.textTertiary }]}>
+                  {new Date(tx.createdAt).toLocaleDateString()}
+                </Text>
+              </View>
+              <Text style={[styles.txAmount, { color: getTransactionColor(tx.amount) }]}>
+                {tx.amount > 0 ? '+' : ''}{tx.amount} $CLAW
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
       <View style={[styles.card, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
         <View style={styles.cardHeader}>
           <Feather name="shopping-cart" size={24} color={theme.link} />
@@ -258,7 +410,7 @@ export default function ProfileScreen() {
           testID="button-buy-claw"
         >
           <LinearGradient
-            colors={['#FFD700', '#FFA500']}
+            colors={Gradients.gold}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.buyButtonGradient}
@@ -268,7 +420,7 @@ export default function ProfileScreen() {
           </LinearGradient>
         </Pressable>
       </View>
-    </KeyboardAwareScrollViewCompat>
+    </ScrollView>
   );
 }
 
@@ -277,6 +429,83 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  proActiveCard: {
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+    marginBottom: Spacing.lg,
+  },
+  proActiveGradient: {
+    padding: Spacing['2xl'],
+    alignItems: 'center',
+  },
+  proActiveTitle: {
+    color: '#000',
+    fontSize: 24,
+    fontWeight: '800',
+    marginTop: Spacing.sm,
+  },
+  proActiveSubtitle: {
+    color: 'rgba(0,0,0,0.6)',
+    fontSize: 14,
+    marginTop: Spacing.xs,
+    marginBottom: Spacing.lg,
+  },
+  proActiveStats: {
+    flexDirection: 'row',
+    gap: Spacing['2xl'],
+  },
+  proActiveStat: {
+    alignItems: 'center',
+  },
+  proActiveStatValue: {
+    color: '#000',
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  proActiveStatLabel: {
+    color: 'rgba(0,0,0,0.5)',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  proActiveStatDivider: {
+    width: 1,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+  },
+  subscriptionCard: {
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    padding: Spacing.xl,
+    marginBottom: Spacing.lg,
+  },
+  subscriptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  subscriptionTitle: {
+    ...Typography.h4,
+    flex: 1,
+  },
+  planDetails: {
+    marginBottom: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  planRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  planLabel: {
+    fontSize: 14,
+  },
+  planValue: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  upgradeSection: {
+    gap: Spacing.xs,
   },
   card: {
     borderRadius: BorderRadius.lg,
@@ -424,6 +653,10 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 4,
   },
+  progressText: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
   proHint: {
     ...Typography.caption,
     marginTop: Spacing.xs,
@@ -447,6 +680,35 @@ const styles = StyleSheet.create({
   proActiveText: {
     ...Typography.body,
     fontWeight: '500',
+  },
+  txRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  txIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  txContent: {
+    flex: 1,
+  },
+  txDescription: {
+    fontSize: 14,
+    fontWeight: '500',
+    textTransform: 'capitalize',
+    marginBottom: 2,
+  },
+  txDate: {
+    fontSize: 12,
+  },
+  txAmount: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   buyDescription: {
     ...Typography.small,

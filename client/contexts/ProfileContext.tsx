@@ -30,6 +30,8 @@ interface ProfileState {
   streak: UserStreak | null;
   canClaimDailyReward: boolean;
   proThreshold: number;
+  messagesUsed: number;
+  messageLimit: number;
   isLoading: boolean;
   error: string | null;
 }
@@ -39,6 +41,10 @@ interface ProfileContextType extends ProfileState {
   claimDailyReward: () => Promise<{ tokensEarned: number; newBalance: number } | null>;
   connectWallet: (walletAddress: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
+  refreshUsage: () => Promise<void>;
+  incrementLocalUsage: () => void;
+  remainingMessages: number;
+  canSendMessage: boolean;
 }
 
 const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
@@ -51,6 +57,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     streak: null,
     canClaimDailyReward: false,
     proThreshold: 1000,
+    messagesUsed: 0,
+    messageLimit: 20,
     isLoading: true,
     error: null,
   });
@@ -84,6 +92,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           streak: data.streak,
           canClaimDailyReward: data.canClaimDailyReward,
           proThreshold: data.proThreshold || 1000,
+          messagesUsed: data.messagesUsed || 0,
+          messageLimit: data.messageLimit || 20,
           isLoading: false,
           error: null,
         });
@@ -110,12 +120,39 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           profile: data.profile,
           streak: data.streak,
           canClaimDailyReward: data.canClaimDailyReward,
+          messagesUsed: data.messagesUsed || prev.messagesUsed,
+          messageLimit: data.messageLimit || prev.messageLimit,
         }));
       }
     } catch (error) {
       console.error('Error refreshing profile:', error);
     }
   }, [state.profile]);
+
+  const refreshUsage = useCallback(async () => {
+    if (!state.profile) return;
+    
+    try {
+      const response = await fetch(new URL(`/api/usage/${state.profile.id}`, getApiUrl()).toString());
+      if (response.ok) {
+        const data = await response.json();
+        setState(prev => ({
+          ...prev,
+          messagesUsed: data.messagesUsed,
+          messageLimit: data.messageLimit,
+        }));
+      }
+    } catch (error) {
+      console.error('Error refreshing usage:', error);
+    }
+  }, [state.profile]);
+
+  const incrementLocalUsage = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      messagesUsed: prev.messagesUsed + 1,
+    }));
+  }, []);
 
   const claimDailyReward = useCallback(async () => {
     if (!state.profile) return null;
@@ -177,6 +214,10 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     loadProfile();
   }, [loadProfile]);
 
+  const isPro = state.profile?.isPro || false;
+  const remainingMessages = isPro ? -1 : Math.max(0, state.messageLimit - state.messagesUsed);
+  const canSendMessage = isPro || remainingMessages > 0;
+
   return (
     <ProfileContext.Provider
       value={{
@@ -185,6 +226,10 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         claimDailyReward,
         connectWallet,
         refreshProfile,
+        refreshUsage,
+        incrementLocalUsage,
+        remainingMessages,
+        canSendMessage,
       }}
     >
       {children}

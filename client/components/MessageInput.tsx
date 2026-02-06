@@ -102,10 +102,7 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.md,
     borderTopWidth: 1,
     borderTopColor: Colors.dark.border,
-    ...Platform.select({
-      ios: Shadows.inputBar,
-      android: { elevation: 4 },
-    }),
+    ...(Platform.OS === 'ios' ? Shadows.inputBar : { elevation: 4 }),
   },
   inputWrapper: {
     flexDirection: "row",

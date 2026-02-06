@@ -1,23 +1,31 @@
 import React, { useState, useCallback, useRef } from "react";
 import {
   View,
+  Text,
   FlatList,
   StyleSheet,
   RefreshControl,
   Platform,
+  Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 
 import { MessageBubble } from "@/components/MessageBubble";
 import { MessageInput } from "@/components/MessageInput";
 import { TypingIndicator } from "@/components/TypingIndicator";
 import { EmptyChat } from "@/components/EmptyChat";
-import { Colors, Spacing } from "@/constants/theme";
+import { useProfile } from "@/contexts/ProfileContext";
+import { Colors, Gradients, Spacing, BorderRadius, Typography } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 import type { Message } from "@shared/schema";
 
 interface MessageData {
@@ -33,6 +41,20 @@ export default function ChatScreen() {
   const queryClient = useQueryClient();
   const flatListRef = useRef<FlatList>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [limitReached, setLimitReached] = useState(false);
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  const {
+    profile,
+    canSendMessage,
+    remainingMessages,
+    messagesUsed,
+    messageLimit,
+    incrementLocalUsage,
+    refreshUsage,
+  } = useProfile();
+
+  const isPro = profile?.isPro || false;
 
   const { data: messages = [], isLoading, refetch } = useQuery<MessageData[]>({
     queryKey: ["/api/messages"],
@@ -40,7 +62,17 @@ export default function ChatScreen() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
-      const response = await apiRequest("POST", "/api/messages", { content });
+      const response = await apiRequest("POST", "/api/messages", {
+        content,
+        profileId: profile?.id,
+      });
+      if (!response.ok) {
+        const errData = await response.json();
+        if (errData.upgrade) {
+          setLimitReached(true);
+        }
+        throw new Error(errData.error || "Failed to send message");
+      }
       return response.json();
     },
     onMutate: async (content: string) => {
@@ -68,6 +100,7 @@ export default function ChatScreen() {
         return [...filtered, data.userMessage, data.assistantMessage];
       });
       setIsTyping(false);
+      incrementLocalUsage();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
     onError: (error, _, context) => {
@@ -81,9 +114,14 @@ export default function ChatScreen() {
 
   const handleSend = useCallback(
     (message: string) => {
+      if (!canSendMessage) {
+        setLimitReached(true);
+        return;
+      }
+      setLimitReached(false);
       sendMessageMutation.mutate(message);
     },
-    [sendMessageMutation]
+    [sendMessageMutation, canSendMessage]
   );
 
   const renderMessage = useCallback(
@@ -133,9 +171,51 @@ export default function ChatScreen() {
           />
         }
       />
+
+      {limitReached ? (
+        <View style={styles.limitBanner}>
+          <View style={styles.limitContent}>
+            <Feather name="lock" size={20} color="#FFD700" />
+            <View style={styles.limitTextContainer}>
+              <Text style={styles.limitTitle}>Daily Limit Reached</Text>
+              <Text style={styles.limitSubtitle}>
+                Earn or hold 1,000 $CLAW to unlock unlimited messages
+              </Text>
+            </View>
+          </View>
+          <Pressable
+            style={styles.upgradeButton}
+            onPress={() => {
+              setLimitReached(false);
+              navigation.goBack();
+            }}
+            testID="button-upgrade-pro"
+          >
+            <LinearGradient
+              colors={Gradients.gold}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.upgradeGradient}
+            >
+              <Feather name="zap" size={16} color="#000" />
+              <Text style={styles.upgradeText}>Get Pro</Text>
+            </LinearGradient>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {!isPro && !limitReached ? (
+        <View style={styles.usageBanner}>
+          <Feather name="message-circle" size={14} color={Colors.dark.textSecondary} />
+          <Text style={styles.usageText}>
+            {remainingMessages} / {messageLimit} messages remaining today
+          </Text>
+        </View>
+      ) : null}
+
       <MessageInput
         onSend={handleSend}
-        disabled={sendMessageMutation.isPending}
+        disabled={sendMessageMutation.isPending || limitReached}
       />
     </KeyboardAvoidingView>
   );
@@ -148,5 +228,58 @@ const styles = StyleSheet.create({
   },
   listContent: {
     flexGrow: 1,
+  },
+  limitBanner: {
+    backgroundColor: "rgba(255, 215, 0, 0.08)",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255, 215, 0, 0.2)",
+    padding: Spacing.md,
+    gap: Spacing.md,
+  },
+  limitContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+  },
+  limitTextContainer: {
+    flex: 1,
+  },
+  limitTitle: {
+    color: "#FFD700",
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 2,
+  },
+  limitSubtitle: {
+    color: Colors.dark.textSecondary,
+    fontSize: 13,
+  },
+  upgradeButton: {
+    borderRadius: BorderRadius.md,
+    overflow: "hidden",
+  },
+  upgradeGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.xs,
+    paddingVertical: Spacing.md,
+  },
+  upgradeText: {
+    color: "#000",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  usageBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.xs,
+    paddingVertical: Spacing.xs,
+    backgroundColor: Colors.dark.backgroundRoot,
+  },
+  usageText: {
+    color: Colors.dark.textSecondary,
+    fontSize: 12,
   },
 });
