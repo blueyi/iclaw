@@ -174,3 +174,13 @@ export type UserStreak = typeof userStreaks.$inferSelect;
 
 export type InsertTokenTransaction = z.infer<typeof insertTokenTransactionSchema>;
 export type TokenTransaction = typeof tokenTransactions.$inferSelect;
+
+export const messageUsage = pgTable("message_usage", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  profileId: varchar("profile_id").notNull(),
+  usageDate: date("usage_date").notNull(),
+  messageCount: integer("message_count").default(0).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type MessageUsage = typeof messageUsage.$inferSelect;

@@ -11,6 +11,7 @@ import {
   type DailyReward,
   type UserStreak,
   type TokenTransaction,
+  type MessageUsage,
   users,
   messages,
   settings,
@@ -19,6 +20,7 @@ import {
   dailyRewards,
   userStreaks,
   tokenTransactions,
+  messageUsage,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, sql, and } from "drizzle-orm";
@@ -61,6 +63,9 @@ export interface IStorage {
 
   addTokens(profileId: string, amount: number, type: string, description?: string): Promise<TokenTransaction>;
   getTransactions(profileId: string, limit?: number): Promise<TokenTransaction[]>;
+
+  getMessageUsage(profileId: string, date: string): Promise<MessageUsage | undefined>;
+  incrementMessageUsage(profileId: string): Promise<MessageUsage>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -368,6 +373,46 @@ export class DatabaseStorage implements IStorage {
       .where(eq(tokenTransactions.profileId, profileId))
       .orderBy(desc(tokenTransactions.createdAt))
       .limit(limit);
+  }
+
+  async getMessageUsage(profileId: string, date: string): Promise<MessageUsage | undefined> {
+    const [usage] = await db
+      .select()
+      .from(messageUsage)
+      .where(
+        and(
+          eq(messageUsage.profileId, profileId),
+          eq(messageUsage.usageDate, date)
+        )
+      );
+    return usage || undefined;
+  }
+
+  async incrementMessageUsage(profileId: string): Promise<MessageUsage> {
+    const today = new Date().toISOString().split('T')[0];
+    const existing = await this.getMessageUsage(profileId, today);
+
+    if (existing) {
+      const [updated] = await db
+        .update(messageUsage)
+        .set({
+          messageCount: sql`${messageUsage.messageCount} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(eq(messageUsage.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(messageUsage)
+        .values({
+          profileId,
+          usageDate: today,
+          messageCount: 1,
+        })
+        .returning();
+      return created;
+    }
   }
 }
 

@@ -4,6 +4,7 @@ import { storage } from "./storage";
 
 const DEFAULT_CONVERSATION_ID = "default";
 const PRO_TOKEN_THRESHOLD = 1000;
+const FREE_DAILY_MESSAGE_LIMIT = 20;
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/messages", async (req, res) => {
@@ -20,12 +21,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/messages", async (req, res) => {
     try {
-      const { content } = req.body;
+      const { content, profileId } = req.body;
       const conversationId =
         (req.body.conversationId as string) || DEFAULT_CONVERSATION_ID;
 
       if (!content || typeof content !== "string") {
         return res.status(400).json({ error: "Message content is required" });
+      }
+
+      if (profileId) {
+        const profile = await storage.getProfileById(profileId);
+        if (profile) {
+          const isPro = profile.currentTokenBalance >= PRO_TOKEN_THRESHOLD || profile.isPro;
+          if (!isPro) {
+            const today = new Date().toISOString().split('T')[0];
+            const usage = await storage.getMessageUsage(profileId, today);
+            const messagesUsed = usage?.messageCount || 0;
+            if (messagesUsed >= FREE_DAILY_MESSAGE_LIMIT) {
+              return res.status(429).json({
+                error: "Daily message limit reached",
+                messagesUsed,
+                messageLimit: FREE_DAILY_MESSAGE_LIMIT,
+                upgrade: true,
+              });
+            }
+          }
+          await storage.incrementMessageUsage(profileId);
+        }
       }
 
       const userMessage = await storage.createMessage({
@@ -120,6 +142,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/usage/:profileId", async (req, res) => {
+    try {
+      const profile = await storage.getProfileById(req.params.profileId);
+      if (!profile) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+
+      const isPro = profile.currentTokenBalance >= PRO_TOKEN_THRESHOLD || profile.isPro;
+      const today = new Date().toISOString().split('T')[0];
+      const usage = await storage.getMessageUsage(req.params.profileId, today);
+      const messagesUsed = usage?.messageCount || 0;
+      const messageLimit = isPro ? -1 : FREE_DAILY_MESSAGE_LIMIT;
+      const remaining = isPro ? -1 : Math.max(0, FREE_DAILY_MESSAGE_LIMIT - messagesUsed);
+
+      res.json({
+        messagesUsed,
+        messageLimit,
+        isPro,
+        remaining,
+      });
+    } catch (error) {
+      console.error("Error fetching usage:", error);
+      res.status(500).json({ error: "Failed to fetch usage" });
+    }
+  });
+
   app.post("/api/profile", async (req, res) => {
     try {
       const { walletAddress, referralCode } = req.body;
@@ -128,6 +176,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const canClaim = await storage.canClaimToday(profile.id);
       
       const isPro = profile.currentTokenBalance >= PRO_TOKEN_THRESHOLD || profile.isPro;
+
+      const today = new Date().toISOString().split('T')[0];
+      const usage = await storage.getMessageUsage(profile.id, today);
+      const messagesUsed = usage?.messageCount || 0;
+      const messageLimit = isPro ? -1 : FREE_DAILY_MESSAGE_LIMIT;
       
       res.json({
         profile: {
@@ -137,6 +190,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         streak,
         canClaimDailyReward: canClaim,
         proThreshold: PRO_TOKEN_THRESHOLD,
+        messagesUsed,
+        messageLimit,
       });
     } catch (error) {
       console.error("Error creating/fetching profile:", error);
@@ -154,6 +209,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const streak = await storage.getStreak(profile.id);
       const canClaim = await storage.canClaimToday(profile.id);
       const isPro = profile.currentTokenBalance >= PRO_TOKEN_THRESHOLD || profile.isPro;
+
+      const today = new Date().toISOString().split('T')[0];
+      const usage = await storage.getMessageUsage(profile.id, today);
+      const messagesUsed = usage?.messageCount || 0;
+      const messageLimit = isPro ? -1 : FREE_DAILY_MESSAGE_LIMIT;
       
       res.json({
         profile: {
@@ -163,6 +223,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         streak,
         canClaimDailyReward: canClaim,
         proThreshold: PRO_TOKEN_THRESHOLD,
+        messagesUsed,
+        messageLimit,
       });
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -180,6 +242,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const streak = await storage.getStreak(profile.id);
       const canClaim = await storage.canClaimToday(profile.id);
       const isPro = profile.currentTokenBalance >= PRO_TOKEN_THRESHOLD || profile.isPro;
+
+      const today = new Date().toISOString().split('T')[0];
+      const usage = await storage.getMessageUsage(profile.id, today);
+      const messagesUsed = usage?.messageCount || 0;
+      const messageLimit = isPro ? -1 : FREE_DAILY_MESSAGE_LIMIT;
       
       res.json({
         profile: {
@@ -189,6 +256,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         streak,
         canClaimDailyReward: canClaim,
         proThreshold: PRO_TOKEN_THRESHOLD,
+        messagesUsed,
+        messageLimit,
       });
     } catch (error) {
       console.error("Error fetching profile by wallet:", error);
