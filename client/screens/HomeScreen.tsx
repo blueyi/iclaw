@@ -59,7 +59,7 @@ export default function HomeScreen() {
           style={styles.welcomeGradient}
         >
           <Image source={clawLogo} style={styles.welcomeLogo} />
-          <Text style={styles.welcomeTitle}>I-Claw</Text>
+          <Text style={styles.welcomeTitle}>I-CLAW</Text>
           <Text style={styles.welcomeTagline}>Your AI, Mobilized.</Text>
           
           <Pressable 
@@ -215,21 +215,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   welcomeLogo: {
-    width: 120,
-    height: 120,
+    width: 160,
+    height: 160,
     resizeMode: 'contain',
   },
   welcomeTitle: {
     color: '#FFF',
-    fontSize: 28,
+    fontSize: 36,
     fontWeight: '800',
-    marginTop: Spacing.md,
+    letterSpacing: 2,
+    marginTop: Spacing.sm,
     marginBottom: Spacing.xs,
   },
   welcomeTagline: {
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.7)',
     fontSize: 16,
-    fontStyle: 'italic',
     textAlign: 'center',
     marginBottom: Spacing.xl,
   },
