@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
@@ -7,6 +7,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+
+import clawLogo from '../../assets/images/claw-logo.png';
 
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { useTheme } from '@/hooks/useTheme';
@@ -56,7 +58,7 @@ export default function HomeScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.welcomeGradient}
         >
-          <Feather name="cpu" size={40} color="#FFF" />
+          <Image source={clawLogo} style={styles.welcomeLogo} />
           <Text style={styles.welcomeTitle}>I-Claw</Text>
           <Text style={styles.welcomeSubtitle}>
             Your intelligent AI assistant powered by OpenClaw Gateway
@@ -213,6 +215,11 @@ const styles = StyleSheet.create({
   welcomeGradient: {
     padding: Spacing['2xl'],
     alignItems: 'center',
+  },
+  welcomeLogo: {
+    width: 80,
+    height: 80,
+    resizeMode: 'contain',
   },
   welcomeTitle: {
     color: '#FFF',
