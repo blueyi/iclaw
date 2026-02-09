@@ -40,7 +40,7 @@ export default function HomeStackNavigator() {
         name="Home"
         component={HomeScreen}
         options={{
-          headerTitle: () => <HeaderTitle title="I-Claw" />,
+          headerTitle: () => <HeaderTitle title="I-CLAW" />,
           headerRight: () => <SettingsButton />,
         }}
       />

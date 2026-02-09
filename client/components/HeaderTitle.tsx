@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleSheet, Image } from "react-native";
 
 import { ThemedText } from "@/components/ThemedText";
-import { Colors, Spacing, Typography } from "@/constants/theme";
+import { Colors, Spacing } from "@/constants/theme";
 
 interface HeaderTitleProps {
   title: string;
@@ -12,7 +12,7 @@ export function HeaderTitle({ title }: HeaderTitleProps) {
   return (
     <View style={styles.container}>
       <Image
-        source={require("../../assets/images/icon.png")}
+        source={require("../../assets/images/claw-logo.png")}
         style={styles.icon}
         resizeMode="contain"
       />
@@ -28,14 +28,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   icon: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     marginRight: Spacing.sm,
-    borderRadius: 8,
   },
   title: {
-    ...Typography.h4,
     color: Colors.dark.text,
-    fontWeight: "600",
+    fontSize: 20,
+    fontWeight: "800",
+    letterSpacing: 1,
   },
 });
