@@ -57,9 +57,9 @@ export default function HomeScreen() {
           style={styles.welcomeGradient}
         >
           <Feather name="cpu" size={40} color="#FFF" />
-          <Text style={styles.welcomeTitle}>OpenClaw AI</Text>
+          <Text style={styles.welcomeTitle}>I-Claw</Text>
           <Text style={styles.welcomeSubtitle}>
-            Your intelligent assistant powered by OpenClaw Gateway
+            Your intelligent AI assistant powered by OpenClaw Gateway
           </Text>
           
           <Pressable 
