@@ -60,9 +60,7 @@ export default function HomeScreen() {
         >
           <Image source={clawLogo} style={styles.welcomeLogo} />
           <Text style={styles.welcomeTitle}>I-Claw</Text>
-          <Text style={styles.welcomeSubtitle}>
-            Your intelligent AI assistant powered by OpenClaw Gateway
-          </Text>
+          <Text style={styles.welcomeTagline}>Your AI, Mobilized.</Text>
           
           <Pressable 
             style={styles.startButton} 
@@ -217,8 +215,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   welcomeLogo: {
-    width: 80,
-    height: 80,
+    width: 120,
+    height: 120,
     resizeMode: 'contain',
   },
   welcomeTitle: {
@@ -228,9 +226,10 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
     marginBottom: Spacing.xs,
   },
-  welcomeSubtitle: {
+  welcomeTagline: {
     color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
+    fontSize: 16,
+    fontStyle: 'italic',
     textAlign: 'center',
     marginBottom: Spacing.xl,
   },
