@@ -5,6 +5,7 @@ import MainTabNavigator from "@/navigation/MainTabNavigator";
 import ChatScreen from "@/screens/ChatScreen";
 import SettingsScreen from "@/screens/SettingsScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
+import { HeaderTitle } from "@/components/HeaderTitle";
 
 export type RootStackParamList = {
   MainTabs: undefined;
@@ -28,7 +29,8 @@ export default function RootStackNavigator() {
         name="Chat"
         component={ChatScreen}
         options={{
-          headerTitle: "Chat",
+          headerTitle: () => <HeaderTitle title="I-CLAW" />,
+          headerBackTitle: "Back",
         }}
       />
       <Stack.Screen
