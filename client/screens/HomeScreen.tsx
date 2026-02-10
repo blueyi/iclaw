@@ -155,7 +155,7 @@ export default function HomeScreen() {
               />
             </View>
             <Text style={[styles.progressText, { color: theme.textSecondary }]}>
-              Pro for $9.99/mo or hold ${`$${proUsdValue}`} in $CLAW for FREE
+              Pro for $9.99/mo or hold ${`$${proUsdValue}`} in $CLAW for <Text style={{ fontStyle: 'italic', color: '#b44dff' }}>Free Access</Text>
             </Text>
           </View>
         ) : null}

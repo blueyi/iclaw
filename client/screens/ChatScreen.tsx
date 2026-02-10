@@ -179,7 +179,7 @@ export default function ChatScreen() {
             <View style={styles.limitTextContainer}>
               <Text style={styles.limitTitle}>Daily Limit Reached</Text>
               <Text style={styles.limitSubtitle}>
-                Upgrade for $9.99/mo or hold $100 in $CLAW for FREE
+                Upgrade for $9.99/mo or hold $100 in $CLAW for <Text style={{ fontStyle: 'italic', color: '#b44dff' }}>Free Access</Text>
               </Text>
             </View>
           </View>
