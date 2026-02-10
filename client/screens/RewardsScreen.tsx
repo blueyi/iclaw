@@ -107,7 +107,7 @@ export default function RewardsScreen() {
     
     try {
       await Share.share({
-        message: `Join I-Claw and get 50 $CLAW tokens! Use my referral code: ${profile.referralCode}\n\nDownload now: https://i-claw.com`,
+        message: `Join I-Claw and earn 50 Claw Points! Use my referral code: ${profile.referralCode}\n\nDownload now: https://i-claw.com`,
         title: 'Join I-Claw',
       });
     } catch (error) {
@@ -145,12 +145,16 @@ export default function RewardsScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.balanceGradient}
         >
-          <Text style={styles.balanceLabel}>Your $CLAW Balance</Text>
+          <Text style={styles.balanceLabel}>Your Claw Points</Text>
           <Text style={styles.balanceAmount}>{profile?.currentTokenBalance?.toLocaleString() || 0}</Text>
           <View style={styles.balanceStats}>
             <View style={styles.balanceStat}>
               <Text style={styles.balanceStatValue}>{profile?.totalTokensEarned?.toLocaleString() || 0}</Text>
               <Text style={styles.balanceStatLabel}>Total Earned</Text>
+            </View>
+            <View style={styles.balanceStatDivider} />
+            <View style={styles.balanceStat}>
+              <Text style={[styles.balanceStatLabel, { marginTop: 4, fontSize: 10 }]}>Redeem for Pro time{'\n'}& real $CLAW tokens</Text>
             </View>
             <View style={styles.balanceStatDivider} />
             <View style={styles.balanceStat}>
@@ -203,7 +207,7 @@ export default function RewardsScreen() {
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Daily Reward</Text>
             <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
               {canClaimDailyReward 
-                ? 'Claim your tokens!' 
+                ? 'Claim your points!' 
                 : 'Come back tomorrow'
               }
             </Text>
@@ -218,7 +222,7 @@ export default function RewardsScreen() {
           <View style={styles.claimedMessage}>
             <Feather name="check-circle" size={24} color={Colors.dark.success} />
             <Text style={[styles.claimedText, { color: Colors.dark.success }]}>
-              +{claimedAmount} $CLAW earned!
+              +{claimedAmount} Claw Points earned!
             </Text>
           </View>
         ) : (
@@ -261,7 +265,7 @@ export default function RewardsScreen() {
         <View style={styles.rewardInfo}>
           <View style={styles.rewardInfoItem}>
             <Text style={[styles.rewardInfoLabel, { color: theme.textSecondary }]}>Base Reward</Text>
-            <Text style={[styles.rewardInfoValue, { color: theme.text }]}>10 $CLAW</Text>
+            <Text style={[styles.rewardInfoValue, { color: theme.text }]}>10 pts</Text>
           </View>
           <View style={styles.rewardInfoItem}>
             <Text style={[styles.rewardInfoLabel, { color: theme.textSecondary }]}>Streak Bonus</Text>
@@ -279,7 +283,7 @@ export default function RewardsScreen() {
       <View style={[styles.referralCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Invite Friends</Text>
         <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-          Earn 100 $CLAW for each friend who joins!
+          Earn 100 Claw Points for each friend who joins!
         </Text>
 
         <View style={[styles.referralCodeBox, { backgroundColor: theme.backgroundSecondary }]}>
@@ -329,7 +333,7 @@ export default function RewardsScreen() {
                 {referralStats.totalEarned}
               </Text>
               <Text style={[styles.referralStatLabel, { color: theme.textSecondary }]}>
-                $CLAW Earned
+                Points Earned
               </Text>
             </View>
           </View>

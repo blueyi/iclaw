@@ -152,7 +152,7 @@ export default function ProfileScreen() {
                 <Text style={styles.proActiveStatValue}>
                   {profile?.currentTokenBalance?.toLocaleString() || 0}
                 </Text>
-                <Text style={styles.proActiveStatLabel}>$CLAW</Text>
+                <Text style={styles.proActiveStatLabel}>Claw Points</Text>
               </View>
               <View style={styles.proActiveStatDivider} />
               <View style={styles.proActiveStat}>
@@ -178,7 +178,7 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.planRow}>
               <Text style={[styles.planLabel, { color: theme.textSecondary }]}>Remaining</Text>
-              <Text style={[styles.planValue, { color: remainingMessages > 5 ? Colors.dark.success : '#FFD700' }]}>
+              <Text style={[styles.planValue, { color: remainingMessages > 2 ? Colors.dark.success : '#FFD700' }]}>
                 {remainingMessages}
               </Text>
             </View>
@@ -271,7 +271,7 @@ export default function ProfileScreen() {
         ) : (
           <View>
             <Text style={[styles.walletDescription, { color: theme.textSecondary }]}>
-              Connect your Solana wallet to check your $CLAW balance and unlock Pro features.
+              Connect your Solana wallet to sync your $CLAW holdings with Claw Points and unlock Pro features.
             </Text>
             <Pressable 
               style={styles.phantomButton}
@@ -302,7 +302,7 @@ export default function ProfileScreen() {
       <View style={[styles.card, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
         <View style={styles.cardHeader}>
           <Feather name="award" size={24} color="#FFD700" />
-          <Text style={[styles.cardTitle, { color: theme.text }]}>$CLAW Status</Text>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>Claw Points</Text>
           {isPro ? (
             <View style={styles.proBadge}>
               <Text style={styles.proBadgeText}>PRO</Text>
@@ -337,7 +337,7 @@ export default function ProfileScreen() {
                 Progress to Pro
               </Text>
               <Text style={[styles.proProgressValue, { color: theme.text }]}>
-                {profile?.currentTokenBalance || 0} $CLAW
+                {profile?.currentTokenBalance || 0} pts
               </Text>
             </View>
             <View style={[styles.progressBar, { backgroundColor: theme.backgroundSecondary }]}>
@@ -387,7 +387,7 @@ export default function ProfileScreen() {
                 </Text>
               </View>
               <Text style={[styles.txAmount, { color: getTransactionColor(tx.amount) }]}>
-                {tx.amount > 0 ? '+' : ''}{tx.amount} $CLAW
+                {tx.amount > 0 ? '+' : ''}{tx.amount} pts
               </Text>
             </View>
           ))}
@@ -398,10 +398,11 @@ export default function ProfileScreen() {
         <View style={styles.cardHeader}>
           <Feather name="shopping-cart" size={24} color={theme.link} />
           <Text style={[styles.cardTitle, { color: theme.text }]}>Get $CLAW</Text>
+
         </View>
         
         <Text style={[styles.buyDescription, { color: theme.textSecondary }]}>
-          Purchase $CLAW tokens on Bags to instantly unlock Pro features and support the ecosystem.
+          Purchase $CLAW on Bags to boost your Claw Points balance and unlock Pro features.
         </Text>
         
         <Pressable 

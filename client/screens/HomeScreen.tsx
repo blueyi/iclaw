@@ -103,7 +103,7 @@ export default function HomeScreen() {
                 {profile.currentTokenBalance?.toLocaleString() || 0}
               </Text>
               <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>
-                $CLAW Balance
+                Claw Points
               </Text>
             </View>
             <View style={[styles.statusDivider, { backgroundColor: theme.border }]} />
@@ -175,7 +175,7 @@ export default function HomeScreen() {
       </View>
 
       <View style={[styles.featuresCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
-        <Text style={[styles.featuresTitle, { color: theme.text }]}>How to Earn $CLAW</Text>
+        <Text style={[styles.featuresTitle, { color: theme.text }]}>How to Earn Claw Points</Text>
         
         <View style={styles.featureItem}>
           <View style={[styles.featureIcon, { backgroundColor: 'rgba(255, 215, 0, 0.15)' }]}>
@@ -184,7 +184,7 @@ export default function HomeScreen() {
           <View style={styles.featureContent}>
             <Text style={[styles.featureLabel, { color: theme.text }]}>Daily Rewards</Text>
             <Text style={[styles.featureDescription, { color: theme.textSecondary }]}>
-              Claim 10+ $CLAW every day with streak bonuses
+              Earn 10+ Claw Points daily with streak bonuses
             </Text>
           </View>
         </View>
@@ -196,7 +196,7 @@ export default function HomeScreen() {
           <View style={styles.featureContent}>
             <Text style={[styles.featureLabel, { color: theme.text }]}>Refer Friends</Text>
             <Text style={[styles.featureDescription, { color: theme.textSecondary }]}>
-              Earn 100 $CLAW per referral
+              Earn 100 Claw Points per referral
             </Text>
           </View>
         </View>
@@ -208,7 +208,7 @@ export default function HomeScreen() {
           <View style={styles.featureContent}>
             <Text style={[styles.featureLabel, { color: theme.text }]}>Buy on Bags</Text>
             <Text style={[styles.featureDescription, { color: theme.textSecondary }]}>
-              Purchase $CLAW tokens on Solana via Bags
+              Purchase $CLAW tokens on Solana via Bags to boost your points
             </Text>
           </View>
         </View>

@@ -5,7 +5,7 @@ import { storage } from "./storage";
 const DEFAULT_CONVERSATION_ID = "default";
 const PRO_TOKEN_THRESHOLD = 1000;
 const PRO_USD_VALUE = 100;
-const FREE_DAILY_MESSAGE_LIMIT = 20;
+const FREE_DAILY_MESSAGE_LIMIT = 5;
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/messages", async (req, res) => {

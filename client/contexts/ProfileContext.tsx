@@ -60,7 +60,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     proThreshold: 1000,
     proUsdValue: 100,
     messagesUsed: 0,
-    messageLimit: 20,
+    messageLimit: 5,
     isLoading: true,
     error: null,
   });
