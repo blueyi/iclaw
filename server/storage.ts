@@ -12,6 +12,11 @@ import {
   type UserStreak,
   type TokenTransaction,
   type MessageUsage,
+  type QuickAction,
+  type InsertQuickAction,
+  type Schedule,
+  type InsertSchedule,
+  type ActionLog,
   users,
   messages,
   settings,
@@ -21,6 +26,9 @@ import {
   userStreaks,
   tokenTransactions,
   messageUsage,
+  quickActions,
+  schedules,
+  actionLogs,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, sql, and } from "drizzle-orm";
@@ -66,6 +74,19 @@ export interface IStorage {
 
   getMessageUsage(profileId: string, date: string): Promise<MessageUsage | undefined>;
   incrementMessageUsage(profileId: string): Promise<MessageUsage>;
+
+  getQuickActions(profileId: string): Promise<QuickAction[]>;
+  createQuickAction(data: InsertQuickAction): Promise<QuickAction>;
+  deleteQuickAction(id: string, profileId: string): Promise<void>;
+  seedDefaultActions(profileId: string): Promise<QuickAction[]>;
+
+  getSchedules(profileId: string): Promise<Schedule[]>;
+  createSchedule(data: InsertSchedule): Promise<Schedule>;
+  updateSchedule(id: string, profileId: string, data: Partial<Schedule>): Promise<Schedule>;
+  deleteSchedule(id: string, profileId: string): Promise<void>;
+
+  createActionLog(profileId: string, actionType: string, actionId: string | null, title: string, status: string, result?: string): Promise<ActionLog>;
+  getActionLogs(profileId: string, limit?: number): Promise<ActionLog[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -413,6 +434,90 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return created;
     }
+  }
+
+  async getQuickActions(profileId: string): Promise<QuickAction[]> {
+    return db
+      .select()
+      .from(quickActions)
+      .where(eq(quickActions.profileId, profileId))
+      .orderBy(asc(quickActions.sortOrder));
+  }
+
+  async createQuickAction(data: InsertQuickAction): Promise<QuickAction> {
+    const [action] = await db.insert(quickActions).values(data).returning();
+    return action;
+  }
+
+  async deleteQuickAction(id: string, profileId: string): Promise<void> {
+    await db
+      .delete(quickActions)
+      .where(and(eq(quickActions.id, id), eq(quickActions.profileId, profileId)));
+  }
+
+  async seedDefaultActions(profileId: string): Promise<QuickAction[]> {
+    const existing = await this.getQuickActions(profileId);
+    if (existing.length > 0) return existing;
+
+    const defaults = [
+      { title: "Check Calendar", description: "View upcoming meetings and events", icon: "calendar", iconColor: "#10b981", command: "check_calendar", sortOrder: 0 },
+      { title: "Run Backup", description: "Execute system backup script", icon: "terminal", iconColor: "#f59e0b", command: "run_backup", sortOrder: 1 },
+      { title: "Summarize Emails", description: "Get a summary of unread emails", icon: "mail", iconColor: "#22d3ee", command: "summarize_emails", sortOrder: 2 },
+      { title: "System Status", description: "Check AI system health", icon: "settings", iconColor: "#6366f1", command: "system_status", sortOrder: 3 },
+      { title: "Quick Note", description: "Save a thought or reminder", icon: "file-text", iconColor: "#f59e0b", command: "quick_note", sortOrder: 4 },
+    ];
+
+    const created: QuickAction[] = [];
+    for (const d of defaults) {
+      const action = await this.createQuickAction({ ...d, profileId, isDefault: true });
+      created.push(action);
+    }
+    return created;
+  }
+
+  async getSchedules(profileId: string): Promise<Schedule[]> {
+    return db
+      .select()
+      .from(schedules)
+      .where(eq(schedules.profileId, profileId))
+      .orderBy(desc(schedules.createdAt));
+  }
+
+  async createSchedule(data: InsertSchedule): Promise<Schedule> {
+    const [schedule] = await db.insert(schedules).values(data).returning();
+    return schedule;
+  }
+
+  async updateSchedule(id: string, profileId: string, data: Partial<Schedule>): Promise<Schedule> {
+    const [updated] = await db
+      .update(schedules)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(schedules.id, id), eq(schedules.profileId, profileId)))
+      .returning();
+    return updated;
+  }
+
+  async deleteSchedule(id: string, profileId: string): Promise<void> {
+    await db
+      .delete(schedules)
+      .where(and(eq(schedules.id, id), eq(schedules.profileId, profileId)));
+  }
+
+  async createActionLog(profileId: string, actionType: string, actionId: string | null, title: string, status: string, result?: string): Promise<ActionLog> {
+    const [log] = await db
+      .insert(actionLogs)
+      .values({ profileId, actionType, actionId, title, status, result })
+      .returning();
+    return log;
+  }
+
+  async getActionLogs(profileId: string, limit = 20): Promise<ActionLog[]> {
+    return db
+      .select()
+      .from(actionLogs)
+      .where(eq(actionLogs.profileId, profileId))
+      .orderBy(desc(actionLogs.createdAt))
+      .limit(limit);
   }
 }
 

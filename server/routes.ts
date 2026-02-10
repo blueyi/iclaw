@@ -384,6 +384,185 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/quick-actions/:profileId", async (req, res) => {
+    try {
+      const actions = await storage.seedDefaultActions(req.params.profileId);
+      res.json(actions);
+    } catch (error) {
+      console.error("Error fetching quick actions:", error);
+      res.status(500).json({ error: "Failed to fetch quick actions" });
+    }
+  });
+
+  app.post("/api/quick-actions", async (req, res) => {
+    try {
+      const { profileId, title, description, icon, iconColor, command } = req.body;
+      if (!profileId || !title || !command) {
+        return res.status(400).json({ error: "profileId, title, and command are required" });
+      }
+      const action = await storage.createQuickAction({
+        profileId,
+        title,
+        description: description || "",
+        icon: icon || "zap",
+        iconColor: iconColor || "#9b5cff",
+        command,
+        isDefault: false,
+        sortOrder: 99,
+      });
+      res.json(action);
+    } catch (error) {
+      console.error("Error creating quick action:", error);
+      res.status(500).json({ error: "Failed to create quick action" });
+    }
+  });
+
+  app.delete("/api/quick-actions/:id", async (req, res) => {
+    try {
+      const { profileId } = req.body;
+      if (!profileId) {
+        return res.status(400).json({ error: "profileId is required" });
+      }
+      await storage.deleteQuickAction(req.params.id, profileId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting quick action:", error);
+      res.status(500).json({ error: "Failed to delete quick action" });
+    }
+  });
+
+  app.post("/api/quick-actions/:id/run", async (req, res) => {
+    try {
+      const { profileId } = req.body;
+      if (!profileId) {
+        return res.status(400).json({ error: "profileId is required" });
+      }
+
+      const actions = await storage.getQuickActions(profileId);
+      const action = actions.find(a => a.id === req.params.id);
+      if (!action) {
+        return res.status(404).json({ error: "Action not found" });
+      }
+
+      const log = await storage.createActionLog(
+        profileId,
+        "quick_action",
+        action.id,
+        action.title,
+        "running"
+      );
+
+      const settings = await storage.getSettings();
+      let result = "";
+
+      if (settings?.openclawUrl) {
+        try {
+          const openclawResponse = await fetch(
+            `${settings.openclawUrl}/api/chat`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ message: `Execute command: ${action.command}. ${action.description}` }),
+            }
+          );
+          if (openclawResponse.ok) {
+            const data = await openclawResponse.json();
+            result = data.response || data.message || "Action completed.";
+          } else {
+            result = "Could not connect to OpenClaw server.";
+          }
+        } catch {
+          result = "Unable to reach OpenClaw server.";
+        }
+      } else {
+        result = `Action "${action.title}" queued. Connect to OpenClaw Gateway in Settings to execute commands.`;
+      }
+
+      await storage.createActionLog(profileId, "quick_action", action.id, action.title, "completed", result);
+
+      res.json({ success: true, result, log });
+    } catch (error) {
+      console.error("Error running quick action:", error);
+      res.status(500).json({ error: "Failed to run action" });
+    }
+  });
+
+  app.get("/api/schedules/:profileId", async (req, res) => {
+    try {
+      const scheduleList = await storage.getSchedules(req.params.profileId);
+      res.json(scheduleList);
+    } catch (error) {
+      console.error("Error fetching schedules:", error);
+      res.status(500).json({ error: "Failed to fetch schedules" });
+    }
+  });
+
+  app.post("/api/schedules", async (req, res) => {
+    try {
+      const { profileId, title, description, command, intervalMinutes } = req.body;
+      if (!profileId || !title || !command) {
+        return res.status(400).json({ error: "profileId, title, and command are required" });
+      }
+      const schedule = await storage.createSchedule({
+        profileId,
+        title,
+        description: description || null,
+        command,
+        intervalMinutes: intervalMinutes || 60,
+        isActive: true,
+      });
+      res.json(schedule);
+    } catch (error) {
+      console.error("Error creating schedule:", error);
+      res.status(500).json({ error: "Failed to create schedule" });
+    }
+  });
+
+  app.put("/api/schedules/:id", async (req, res) => {
+    try {
+      const { profileId, isActive, title, description, command, intervalMinutes } = req.body;
+      if (!profileId) {
+        return res.status(400).json({ error: "profileId is required" });
+      }
+      const schedule = await storage.updateSchedule(req.params.id, profileId, {
+        ...(isActive !== undefined && { isActive }),
+        ...(title && { title }),
+        ...(description !== undefined && { description }),
+        ...(command && { command }),
+        ...(intervalMinutes && { intervalMinutes }),
+      });
+      res.json(schedule);
+    } catch (error) {
+      console.error("Error updating schedule:", error);
+      res.status(500).json({ error: "Failed to update schedule" });
+    }
+  });
+
+  app.delete("/api/schedules/:id", async (req, res) => {
+    try {
+      const { profileId } = req.body;
+      if (!profileId) {
+        return res.status(400).json({ error: "profileId is required" });
+      }
+      await storage.deleteSchedule(req.params.id, profileId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting schedule:", error);
+      res.status(500).json({ error: "Failed to delete schedule" });
+    }
+  });
+
+  app.get("/api/action-logs/:profileId", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 20;
+      const logs = await storage.getActionLogs(req.params.profileId, limit);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching action logs:", error);
+      res.status(500).json({ error: "Failed to fetch action logs" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
