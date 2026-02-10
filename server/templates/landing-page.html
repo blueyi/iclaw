@@ -6,6 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="I-Claw is a beautiful mobile app that connects you to your OpenClaw AI assistant from anywhere. Control your personal AI from your iPhone. Powered by $CLAW token." />
     <meta name="theme-color" content="#0F0F14" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="I-CLAW" />
+    <link rel="apple-touch-icon" href="/assets/images/icon.png" />
+    <link rel="manifest" href="/manifest.json" />
     <style>
       :root {
         --primary: #6366F1;
@@ -830,6 +835,88 @@
         font-size: 13px;
       }
 
+      /* PWA Install Button */
+      .pwa-install-btn {
+        display: none;
+        align-items: center;
+        gap: 10px;
+        padding: 16px 32px;
+        background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+        color: white;
+        border: none;
+        border-radius: 30px;
+        font-weight: 700;
+        font-size: 16px;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        margin: 0 auto 20px;
+        font-family: inherit;
+      }
+
+      .pwa-install-btn.visible {
+        display: inline-flex;
+      }
+
+      .pwa-install-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 32px rgba(99, 102, 241, 0.5);
+      }
+
+      .pwa-section {
+        background: var(--bg-elevated);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 32px;
+      }
+
+      .pwa-section h3 {
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+
+      .pwa-section p {
+        color: var(--text-secondary);
+        font-size: 14px;
+        margin-bottom: 16px;
+      }
+
+      .pwa-steps {
+        text-align: left;
+        max-width: 400px;
+        margin: 0 auto;
+      }
+
+      .pwa-step {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 12px;
+        color: var(--text-secondary);
+        font-size: 14px;
+      }
+
+      .pwa-step-num {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+        color: white;
+        font-size: 12px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .install-or {
+        color: var(--text-tertiary);
+        font-size: 14px;
+        margin: 16px 0;
+      }
+
       /* Download Section */
       .download {
         position: relative;
@@ -1484,7 +1571,38 @@
     <section class="download" id="download">
       <div class="download-content">
         <h2>Get I-Claw Now</h2>
-        <p>Download Expo Go and scan the QR code to start using I-Claw on your iPhone</p>
+        <p>Install I-Claw directly to your device as a web app, or use Expo Go for the native experience</p>
+
+        <div class="pwa-section">
+          <h3>Install as Web App</h3>
+          <p>Add I-Claw to your home screen for a native app experience</p>
+
+          <button class="pwa-install-btn" id="pwa-install-btn" onclick="installPWA()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Install I-CLAW
+          </button>
+
+          <div class="pwa-steps" id="pwa-manual-steps">
+            <div class="pwa-step">
+              <span class="pwa-step-num">1</span>
+              <span id="pwa-step-1">Tap the Share button in your browser</span>
+            </div>
+            <div class="pwa-step">
+              <span class="pwa-step-num">2</span>
+              <span id="pwa-step-2">Select "Add to Home Screen"</span>
+            </div>
+            <div class="pwa-step">
+              <span class="pwa-step-num">3</span>
+              <span>Launch I-CLAW from your home screen</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="install-or">- or use Expo Go for the full native experience -</p>
 
         <div class="qr-container">
           <div class="qr-code" id="qr-code"></div>
@@ -1530,6 +1648,66 @@
 
     <script src="https://unpkg.com/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
     <script>
+      // PWA Install Logic
+      let deferredPrompt = null;
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        const installBtn = document.getElementById('pwa-install-btn');
+        if (installBtn) {
+          installBtn.classList.add('visible');
+        }
+        const manualSteps = document.getElementById('pwa-manual-steps');
+        if (manualSteps) {
+          manualSteps.style.display = 'none';
+        }
+      });
+
+      function installPWA() {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then((choiceResult) => {
+            deferredPrompt = null;
+            const installBtn = document.getElementById('pwa-install-btn');
+            if (choiceResult.outcome === 'accepted' && installBtn) {
+              installBtn.textContent = 'Installed!';
+              installBtn.disabled = true;
+            }
+          });
+        }
+      }
+
+      // Platform-specific install instructions
+      (function() {
+        const ua = navigator.userAgent;
+        const isIOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+        const isAndroid = /Android/i.test(ua);
+        const isChrome = /Chrome/i.test(ua) && !/Edge/i.test(ua);
+
+        const step1 = document.getElementById('pwa-step-1');
+        const step2 = document.getElementById('pwa-step-2');
+
+        if (isIOS) {
+          if (step1) step1.textContent = 'Tap the Share button (box with arrow) in Safari';
+          if (step2) step2.textContent = 'Scroll down and tap "Add to Home Screen"';
+        } else if (isAndroid && isChrome) {
+          if (step1) step1.textContent = 'Tap the menu (three dots) in Chrome';
+          if (step2) step2.textContent = 'Select "Add to Home Screen" or "Install App"';
+        } else {
+          if (step1) step1.textContent = 'Open the browser menu or settings';
+          if (step2) step2.textContent = 'Select "Install" or "Add to Home Screen"';
+        }
+      })();
+
+      // Service Worker Registration
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+
+      // QR Code and Deep Link
       (function() {
         const deepLink = "exps://EXPS_URL_PLACEHOLDER";
         const ua = navigator.userAgent;
