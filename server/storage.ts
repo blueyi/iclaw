@@ -227,11 +227,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createReferral(referrerProfileId: string, referredProfileId: string): Promise<Referral> {
+    const referrerProfile = await this.getProfileById(referrerProfileId);
+    const referrerReward = referrerProfile?.isPro ? 200 : 100;
+    const referredReward = 50;
+
     const [referral] = await db
       .insert(referrals)
       .values({
         referrerProfileId,
         referredProfileId,
+        referrerReward,
+        referredReward,
         status: "pending",
       })
       .returning();
@@ -323,8 +329,9 @@ export class DatabaseStorage implements IStorage {
       newStreak = streak.currentStreak + 1;
     }
 
+    const profile = await this.getProfileById(profileId);
+    const baseReward = profile?.isPro ? 20 : 10;
     const bonusMultiplier = Math.min(Math.floor(newStreak / 7) + 1, 5);
-    const baseReward = 10;
     const tokensEarned = baseReward * bonusMultiplier;
 
     const [reward] = await db

@@ -154,7 +154,7 @@ export default function RewardsScreen() {
             </View>
             <View style={styles.balanceStatDivider} />
             <View style={styles.balanceStat}>
-              <Text style={[styles.balanceStatLabel, { marginTop: 4, fontSize: 10 }]}>Redeem for Pro time{'\n'}& real $CLAW tokens</Text>
+              <Text style={[styles.balanceStatLabel, { marginTop: 4, fontSize: 10 }]}>Redeem for I-CLAW{'\n'}Pro Usage & $CLAW</Text>
             </View>
             <View style={styles.balanceStatDivider} />
             <View style={styles.balanceStat}>
@@ -265,7 +265,7 @@ export default function RewardsScreen() {
         <View style={styles.rewardInfo}>
           <View style={styles.rewardInfoItem}>
             <Text style={[styles.rewardInfoLabel, { color: theme.textSecondary }]}>Base Reward</Text>
-            <Text style={[styles.rewardInfoValue, { color: theme.text }]}>10 pts</Text>
+            <Text style={[styles.rewardInfoValue, { color: theme.text }]}>{profile?.isPro ? '20' : '10'} pts</Text>
           </View>
           <View style={styles.rewardInfoItem}>
             <Text style={[styles.rewardInfoLabel, { color: theme.textSecondary }]}>Streak Bonus</Text>
@@ -278,12 +278,43 @@ export default function RewardsScreen() {
             <Text style={[styles.rewardInfoValue, { color: theme.text }]}>{streak?.longestStreak || 0} days</Text>
           </View>
         </View>
+
+        {profile?.isPro ? (
+          <View style={[styles.proBonusBanner, { backgroundColor: 'rgba(155, 92, 255, 0.15)', borderColor: 'rgba(155, 92, 255, 0.3)' }]}>
+            <Feather name="zap" size={16} color="#9b5cff" />
+            <Text style={{ color: '#9b5cff', fontSize: 13, fontWeight: '600', marginLeft: 8 }}>
+              Pro Bonus: 2x daily check-in & 2x referral rewards
+            </Text>
+          </View>
+        ) : null}
+      </View>
+
+      <View style={[styles.referralCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+        <View style={styles.redemptionHeader}>
+          <Feather name="repeat" size={20} color="#9b5cff" />
+          <Text style={[styles.sectionTitle, { color: theme.text, marginLeft: 8 }]}>Redemption Rates</Text>
+        </View>
+        <View style={styles.redemptionGrid}>
+          <View style={[styles.redemptionCard, { backgroundColor: theme.backgroundSecondary }]}>
+            <Feather name="shield" size={24} color="#9b5cff" />
+            <Text style={[styles.redemptionValue, { color: theme.text }]}>1,000 pts</Text>
+            <Text style={[styles.redemptionLabel, { color: theme.textSecondary }]}>= 1 Month I-CLAW Pro</Text>
+          </View>
+          <View style={[styles.redemptionCard, { backgroundColor: theme.backgroundSecondary }]}>
+            <Feather name="dollar-sign" size={24} color="#FFD700" />
+            <Text style={[styles.redemptionValue, { color: theme.text }]}>100 pts</Text>
+            <Text style={[styles.redemptionLabel, { color: theme.textSecondary }]}>= 1 $CLAW Token</Text>
+          </View>
+        </View>
+        <Text style={[styles.redemptionNote, { color: theme.textSecondary }]}>
+          Official redemption rules and details coming soon.
+        </Text>
       </View>
 
       <View style={[styles.referralCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Invite Friends</Text>
         <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-          Earn 100 Claw Points for each friend who joins!
+          Earn {profile?.isPro ? '200' : '100'} Claw Points for each friend who joins!
         </Text>
 
         <View style={[styles.referralCodeBox, { backgroundColor: theme.backgroundSecondary }]}>
@@ -514,6 +545,45 @@ const styles = StyleSheet.create({
   rewardInfoValue: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  proBonusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    marginTop: Spacing.md,
+  },
+  redemptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+  },
+  redemptionGrid: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  redemptionCard: {
+    flex: 1,
+    alignItems: 'center',
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.xs,
+  },
+  redemptionValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginTop: Spacing.xs,
+  },
+  redemptionLabel: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  redemptionNote: {
+    fontSize: 11,
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
   referralCard: {
     borderRadius: BorderRadius.lg,

@@ -184,7 +184,7 @@ export default function HomeScreen() {
           <View style={styles.featureContent}>
             <Text style={[styles.featureLabel, { color: theme.text }]}>Daily Rewards</Text>
             <Text style={[styles.featureDescription, { color: theme.textSecondary }]}>
-              Earn 10+ Claw Points daily with streak bonuses
+              Earn {profile?.isPro ? '20' : '10'}+ Claw Points daily with streak bonuses
             </Text>
           </View>
         </View>
@@ -196,7 +196,7 @@ export default function HomeScreen() {
           <View style={styles.featureContent}>
             <Text style={[styles.featureLabel, { color: theme.text }]}>Refer Friends</Text>
             <Text style={[styles.featureDescription, { color: theme.textSecondary }]}>
-              Earn 100 Claw Points per referral
+              Earn {profile?.isPro ? '200' : '100'} Claw Points per referral
             </Text>
           </View>
         </View>
