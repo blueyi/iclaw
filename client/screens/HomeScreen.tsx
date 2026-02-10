@@ -28,7 +28,7 @@ export default function HomeScreen() {
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
-  const { profile, proThreshold, remainingMessages, messageLimit, canSendMessage } = useProfile();
+  const { profile, proThreshold, proUsdValue, remainingMessages, messageLimit, canSendMessage } = useProfile();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const handleStartChat = () => {
@@ -155,7 +155,7 @@ export default function HomeScreen() {
               />
             </View>
             <Text style={[styles.progressText, { color: theme.textSecondary }]}>
-              {profile?.currentTokenBalance || 0} / {proThreshold.toLocaleString()} $CLAW to Pro
+              ${proUsdValue} worth of $CLAW to unlock Pro
             </Text>
           </View>
         ) : null}

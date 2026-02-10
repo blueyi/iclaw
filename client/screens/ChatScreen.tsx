@@ -179,7 +179,7 @@ export default function ChatScreen() {
             <View style={styles.limitTextContainer}>
               <Text style={styles.limitTitle}>Daily Limit Reached</Text>
               <Text style={styles.limitSubtitle}>
-                Earn or hold 1,000 $CLAW to unlock unlimited messages
+                Hold $100 worth of $CLAW to unlock unlimited messages
               </Text>
             </View>
           </View>

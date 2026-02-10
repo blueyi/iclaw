@@ -30,6 +30,7 @@ interface ProfileState {
   streak: UserStreak | null;
   canClaimDailyReward: boolean;
   proThreshold: number;
+  proUsdValue: number;
   messagesUsed: number;
   messageLimit: number;
   isLoading: boolean;
@@ -57,6 +58,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     streak: null,
     canClaimDailyReward: false,
     proThreshold: 1000,
+    proUsdValue: 100,
     messagesUsed: 0,
     messageLimit: 20,
     isLoading: true,
@@ -92,6 +94,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           streak: data.streak,
           canClaimDailyReward: data.canClaimDailyReward,
           proThreshold: data.proThreshold || 1000,
+          proUsdValue: data.proUsdValue || 100,
           messagesUsed: data.messagesUsed || 0,
           messageLimit: data.messageLimit || 20,
           isLoading: false,

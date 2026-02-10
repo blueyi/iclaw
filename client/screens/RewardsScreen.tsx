@@ -37,7 +37,8 @@ export default function RewardsScreen() {
     profile, 
     streak, 
     canClaimDailyReward, 
-    proThreshold, 
+    proThreshold,
+    proUsdValue,
     isLoading, 
     claimDailyReward,
     refreshProfile 
@@ -173,7 +174,7 @@ export default function RewardsScreen() {
         <Text style={[styles.proDescription, { color: theme.textSecondary }]}>
           {profile?.isPro 
             ? 'You have Pro access! Enjoy unlimited messages and priority AI.'
-            : `Hold ${proThreshold.toLocaleString()} $CLAW to unlock Pro features`
+            : `Hold $${proUsdValue} worth of $CLAW to unlock Pro features`
           }
         </Text>
         {!profile?.isPro ? (
@@ -187,7 +188,7 @@ export default function RewardsScreen() {
               />
             </View>
             <Text style={[styles.progressText, { color: theme.textSecondary }]}>
-              {profile?.currentTokenBalance || 0} / {proThreshold.toLocaleString()}
+              {profile?.currentTokenBalance || 0} $CLAW
             </Text>
           </View>
         ) : null}

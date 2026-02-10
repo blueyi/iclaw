@@ -37,7 +37,7 @@ export default function ProfileScreen() {
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
-  const { profile, isLoading, connectWallet, refreshProfile, proThreshold, messagesUsed, messageLimit, remainingMessages } = useProfile();
+  const { profile, isLoading, connectWallet, refreshProfile, proThreshold, proUsdValue, messagesUsed, messageLimit, remainingMessages } = useProfile();
   
   const [walletInput, setWalletInput] = useState('');
   const [showWalletInput, setShowWalletInput] = useState(false);
@@ -194,7 +194,7 @@ export default function ProfileScreen() {
               />
             </View>
             <Text style={[styles.progressText, { color: theme.textSecondary }]}>
-              {profile?.currentTokenBalance || 0} / {proThreshold.toLocaleString()} $CLAW to Pro
+              ${proUsdValue} worth of $CLAW to unlock Pro
             </Text>
           </View>
         </View>
@@ -337,7 +337,7 @@ export default function ProfileScreen() {
                 Progress to Pro
               </Text>
               <Text style={[styles.proProgressValue, { color: theme.text }]}>
-                {profile?.currentTokenBalance || 0} / {proThreshold.toLocaleString()}
+                {profile?.currentTokenBalance || 0} $CLAW
               </Text>
             </View>
             <View style={[styles.progressBar, { backgroundColor: theme.backgroundSecondary }]}>
@@ -349,7 +349,7 @@ export default function ProfileScreen() {
               />
             </View>
             <Text style={[styles.proHint, { color: theme.textTertiary }]}>
-              Hold {proThreshold.toLocaleString()} $CLAW to unlock Pro features
+              Hold ${proUsdValue} worth of $CLAW to unlock Pro features
             </Text>
           </View>
         ) : (

@@ -4,6 +4,7 @@ import { storage } from "./storage";
 
 const DEFAULT_CONVERSATION_ID = "default";
 const PRO_TOKEN_THRESHOLD = 1000;
+const PRO_USD_VALUE = 100;
 const FREE_DAILY_MESSAGE_LIMIT = 20;
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -190,6 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         streak,
         canClaimDailyReward: canClaim,
         proThreshold: PRO_TOKEN_THRESHOLD,
+        proUsdValue: PRO_USD_VALUE,
         messagesUsed,
         messageLimit,
       });
@@ -223,6 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         streak,
         canClaimDailyReward: canClaim,
         proThreshold: PRO_TOKEN_THRESHOLD,
+        proUsdValue: PRO_USD_VALUE,
         messagesUsed,
         messageLimit,
       });
@@ -256,6 +259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         streak,
         canClaimDailyReward: canClaim,
         proThreshold: PRO_TOKEN_THRESHOLD,
+        proUsdValue: PRO_USD_VALUE,
         messagesUsed,
         messageLimit,
       });
