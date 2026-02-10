@@ -194,7 +194,7 @@ export default function ProfileScreen() {
               />
             </View>
             <Text style={[styles.progressText, { color: theme.textSecondary }]}>
-              ${proUsdValue} worth of $CLAW to unlock Pro
+              Pro for $9.99/mo or hold ${`$${proUsdValue}`} in $CLAW for FREE
             </Text>
           </View>
         </View>
@@ -349,7 +349,7 @@ export default function ProfileScreen() {
               />
             </View>
             <Text style={[styles.proHint, { color: theme.textTertiary }]}>
-              Hold ${proUsdValue} worth of $CLAW to unlock Pro features
+              $9.99/mo or hold ${`$${proUsdValue}`} in $CLAW to unlock for FREE
             </Text>
           </View>
         ) : (

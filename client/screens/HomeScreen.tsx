@@ -155,7 +155,7 @@ export default function HomeScreen() {
               />
             </View>
             <Text style={[styles.progressText, { color: theme.textSecondary }]}>
-              ${proUsdValue} worth of $CLAW to unlock Pro
+              Pro for $9.99/mo or hold ${`$${proUsdValue}`} in $CLAW for FREE
             </Text>
           </View>
         ) : null}

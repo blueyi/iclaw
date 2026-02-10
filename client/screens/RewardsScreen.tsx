@@ -174,7 +174,7 @@ export default function RewardsScreen() {
         <Text style={[styles.proDescription, { color: theme.textSecondary }]}>
           {profile?.isPro 
             ? 'You have Pro access! Enjoy unlimited messages and priority AI.'
-            : `Hold $${proUsdValue} worth of $CLAW to unlock Pro features`
+            : `Pro-Features for $9.99/mo, or hold $${proUsdValue} in $CLAW for FREE`
           }
         </Text>
         {!profile?.isPro ? (
