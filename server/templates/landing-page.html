@@ -917,6 +917,66 @@
         margin: 16px 0;
       }
 
+      /* Demo Video Section */
+      .demo-video {
+        position: relative;
+        z-index: 1;
+        padding: 80px 24px;
+        text-align: center;
+        background: var(--bg-root);
+      }
+      .demo-video-content {
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      .demo-video h2 {
+        font-size: clamp(28px, 4vw, 40px);
+        font-weight: 700;
+        letter-spacing: -1px;
+        margin-bottom: 12px;
+      }
+      .demo-video p {
+        color: var(--text-secondary);
+        font-size: 16px;
+        margin-bottom: 32px;
+      }
+      .demo-video-player {
+        position: relative;
+        max-width: 300px;
+        margin: 0 auto 32px;
+        border-radius: 24px;
+        overflow: hidden;
+        border: 2px solid var(--border);
+        background: #000;
+      }
+      .demo-video-player video {
+        width: 100%;
+        display: block;
+        border-radius: 22px;
+      }
+      .demo-download-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        background: linear-gradient(135deg, var(--primary), var(--indigo));
+        color: #fff;
+        padding: 14px 32px;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 15px;
+        text-decoration: none;
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: none;
+        cursor: pointer;
+      }
+      .demo-download-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 30px rgba(155, 92, 255, 0.4);
+      }
+      .demo-download-btn svg {
+        flex-shrink: 0;
+      }
+
       /* Download Section */
       .download {
         position: relative;
@@ -1583,6 +1643,26 @@
           </svg>
           <span>GitHub</span>
           <small>Open source</small>
+        </a>
+      </div>
+    </section>
+
+    <section class="demo-video" id="demo">
+      <div class="demo-video-content">
+        <h2>See I-CLAW in Action</h2>
+        <p>Watch how I-CLAW puts AI control at your fingertips</p>
+        <div class="demo-video-player">
+          <video autoplay loop muted playsinline>
+            <source src="/assets/videos/iclaw-demo.mp4" type="video/mp4">
+          </video>
+        </div>
+        <a href="/assets/videos/iclaw-demo.mp4" download="I-CLAW-Demo.mp4" class="demo-download-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Download Demo Video
         </a>
       </div>
     </section>
