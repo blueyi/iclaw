@@ -1,0 +1,24 @@
+{
+  "name": "I-CLAW",
+  "short_name": "I-CLAW",
+  "description": "Your AI, Mobilized. Control your OpenClaw AI from anywhere.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#070812",
+  "theme_color": "#6366F1",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/assets/images/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/images/splash-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
