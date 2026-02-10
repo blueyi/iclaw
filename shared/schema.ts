@@ -175,6 +175,51 @@ export type UserStreak = typeof userStreaks.$inferSelect;
 export type InsertTokenTransaction = z.infer<typeof insertTokenTransactionSchema>;
 export type TokenTransaction = typeof tokenTransactions.$inferSelect;
 
+export const quickActions = pgTable("quick_actions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  profileId: varchar("profile_id").notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  icon: varchar("icon", { length: 50 }).notNull(),
+  iconColor: varchar("icon_color", { length: 20 }).default("#9b5cff").notNull(),
+  command: text("command").notNull(),
+  isDefault: boolean("is_default").default(false).notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const schedules = pgTable("schedules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  profileId: varchar("profile_id").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  command: text("command").notNull(),
+  cronExpression: varchar("cron_expression", { length: 100 }),
+  intervalMinutes: integer("interval_minutes"),
+  isActive: boolean("is_active").default(true).notNull(),
+  lastRunAt: timestamp("last_run_at"),
+  nextRunAt: timestamp("next_run_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const actionLogs = pgTable("action_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  profileId: varchar("profile_id").notNull(),
+  actionType: varchar("action_type", { length: 30 }).notNull(),
+  actionId: varchar("action_id"),
+  title: text("title").notNull(),
+  status: varchar("status", { length: 20 }).default("running").notNull(),
+  result: text("result"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type QuickAction = typeof quickActions.$inferSelect;
+export type InsertQuickAction = typeof quickActions.$inferInsert;
+export type Schedule = typeof schedules.$inferSelect;
+export type InsertSchedule = typeof schedules.$inferInsert;
+export type ActionLog = typeof actionLogs.$inferSelect;
+
 export const messageUsage = pgTable("message_usage", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   profileId: varchar("profile_id").notNull(),
