@@ -35,6 +35,10 @@ export default function HomeScreen() {
     navigation.navigate('Chat', {});
   };
 
+  const handleCommandCenter = () => {
+    navigation.navigate('CommandCenter');
+  };
+
   const progressTowardsPro = profile 
     ? Math.min((profile.currentTokenBalance / proThreshold) * 100, 100)
     : 0;
@@ -69,6 +73,15 @@ export default function HomeScreen() {
           >
             <Feather name="message-circle" size={20} color={Colors.dark.primary} />
             <Text style={styles.startButtonText}>Start Chat</Text>
+          </Pressable>
+
+          <Pressable 
+            style={styles.commandCenterButton} 
+            onPress={handleCommandCenter}
+            testID="button-command-center"
+          >
+            <Feather name="cpu" size={18} color="#FFF" />
+            <Text style={styles.commandCenterText}>Command Center</Text>
           </Pressable>
 
           {!isPro && profile ? (
@@ -246,6 +259,23 @@ const styles = StyleSheet.create({
     color: Colors.dark.primary,
     fontSize: 16,
     fontWeight: '700',
+  },
+  commandCenterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: 'rgba(155,92,255,0.25)',
+    borderWidth: 1,
+    borderColor: 'rgba(155,92,255,0.4)',
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing['2xl'],
+    borderRadius: BorderRadius.full,
+    marginTop: Spacing.sm,
+  },
+  commandCenterText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   usageHint: {
     flexDirection: 'row',

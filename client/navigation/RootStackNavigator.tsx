@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import MainTabNavigator from "@/navigation/MainTabNavigator";
 import ChatScreen from "@/screens/ChatScreen";
 import SettingsScreen from "@/screens/SettingsScreen";
+import CommandCenterScreen from "@/screens/CommandCenterScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { HeaderTitle } from "@/components/HeaderTitle";
 
@@ -11,6 +12,7 @@ export type RootStackParamList = {
   MainTabs: undefined;
   Chat: { conversationId?: string };
   Settings: undefined;
+  CommandCenter: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -30,6 +32,14 @@ export default function RootStackNavigator() {
         component={ChatScreen}
         options={{
           headerTitle: () => <HeaderTitle title="I-CLAW" />,
+          headerBackTitle: "Back",
+        }}
+      />
+      <Stack.Screen
+        name="CommandCenter"
+        component={CommandCenterScreen}
+        options={{
+          headerTitle: "Command Center",
           headerBackTitle: "Back",
         }}
       />
