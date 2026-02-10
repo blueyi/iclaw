@@ -21,6 +21,7 @@ Preferred communication style: Simple, everyday language.
 
 **Navigation**: React Navigation with a stack-only architecture:
 - Chat screen (main conversation interface)
+- Command Center screen (Quick Actions, Schedules, Notifications tabs)
 - Settings screen (modal presentation for configuration)
 
 **State Management**: 
@@ -46,6 +47,9 @@ Preferred communication style: Simple, everyday language.
 **API Design**: RESTful JSON API with endpoints:
 - `GET/POST /api/messages` - Message CRUD operations
 - `GET/PUT /api/settings` - App configuration
+- `GET/POST/DELETE /api/quick-actions` - Quick action CRUD and execution
+- `GET/POST/PUT/DELETE /api/schedules` - Schedule/automation CRUD
+- `GET /api/action-logs` - Action execution history
 
 **OpenClaw Integration**: The server proxies chat messages to a configurable external OpenClaw AI server URL, falling back to a simulated response when unavailable.
 
@@ -57,6 +61,9 @@ Preferred communication style: Simple, everyday language.
 - `users`: Basic user accounts (id, username, password)
 - `messages`: Chat messages (id, content, role, createdAt, conversationId)
 - `settings`: App configuration (openclawUrl, saveMessagesLocally)
+- `quick_actions`: User quick actions (title, description, icon, command)
+- `schedules`: Automated task schedules (title, command, interval, active state)
+- `action_logs`: Execution history for actions and schedules
 
 **Migrations**: Managed via `drizzle-kit push` command.
 
