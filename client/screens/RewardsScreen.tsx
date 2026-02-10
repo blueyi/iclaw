@@ -195,7 +195,7 @@ export default function RewardsScreen() {
               />
             </View>
             <Text style={[styles.progressText, { color: theme.textSecondary }]}>
-              {profile?.currentTokenBalance || 0} $CLAW
+              {profile?.currentTokenBalance || 0} pts
             </Text>
           </View>
         ) : null}
