@@ -215,8 +215,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   welcomeLogo: {
-    width: 160,
-    height: 160,
+    width: 240,
+    height: 240,
     resizeMode: 'contain',
   },
   welcomeTitle: {
