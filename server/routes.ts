@@ -1,13 +1,135 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "node:http";
 import { storage } from "./storage";
+import bcrypt from "bcryptjs";
 
 const DEFAULT_CONVERSATION_ID = "default";
 const PRO_TOKEN_THRESHOLD = 1000;
 const PRO_USD_VALUE = 100;
 const FREE_DAILY_MESSAGE_LIMIT = 5;
 
+const SALT_ROUNDS = 12;
+
+async function getAuthUser(req: Request) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  const token = authHeader.slice(7);
+  const session = await storage.getSessionByToken(token);
+  if (!session) return null;
+  const user = await storage.getUser(session.userId);
+  return user || null;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+
+      if (!username || !password) {
+        return res.status(400).json({ error: "Username and password are required" });
+      }
+
+      if (username.length < 3 || username.length > 30) {
+        return res.status(400).json({ error: "Username must be 3-30 characters" });
+      }
+
+      if (password.length < 8) {
+        return res.status(400).json({ error: "Password must be at least 8 characters" });
+      }
+
+      const existing = await storage.getUserByUsername(username);
+      if (existing) {
+        return res.status(409).json({ error: "Username already taken" });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+      const user = await storage.createUser({ username, password: hashedPassword });
+
+      const profile = await storage.getOrCreateProfile();
+      if (profile) {
+        await storage.updateProfile(profile.id, { userId: user.id } as any);
+      }
+
+      const session = await storage.createSession(user.id);
+
+      res.status(201).json({
+        user: { id: user.id, username: user.username },
+        token: session.token,
+      });
+    } catch (error) {
+      console.error("Error registering:", error);
+      res.status(500).json({ error: "Registration failed" });
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+
+      if (!username || !password) {
+        return res.status(400).json({ error: "Username and password are required" });
+      }
+
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        return res.status(401).json({ error: "Invalid username or password" });
+      }
+
+      const validPassword = await bcrypt.compare(password, user.password);
+      if (!validPassword) {
+        return res.status(401).json({ error: "Invalid username or password" });
+      }
+
+      let profile = await storage.getProfileByUserId(user.id);
+      if (!profile) {
+        profile = await storage.getOrCreateProfile();
+        await storage.updateProfile(profile.id, { userId: user.id } as any);
+      }
+
+      const session = await storage.createSession(user.id);
+
+      res.json({
+        user: { id: user.id, username: user.username },
+        token: session.token,
+      });
+    } catch (error) {
+      console.error("Error logging in:", error);
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  app.post("/api/auth/logout", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith('Bearer ')) {
+        await storage.deleteSession(authHeader.slice(7));
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error logging out:", error);
+      res.status(500).json({ error: "Logout failed" });
+    }
+  });
+
+  app.get("/api/auth/me", async (req, res) => {
+    try {
+      const user = await getAuthUser(req);
+      if (!user) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const profile = await storage.getProfileByUserId(user.id);
+
+      res.json({
+        user: { id: user.id, username: user.username },
+        profileId: profile?.id || null,
+      });
+    } catch (error) {
+      console.error("Error fetching auth user:", error);
+      res.status(500).json({ error: "Failed to fetch user" });
+    }
+  });
+
   app.get("/api/messages", async (req, res) => {
     try {
       const conversationId =
@@ -172,7 +294,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/profile", async (req, res) => {
     try {
       const { walletAddress, referralCode } = req.body;
-      const profile = await storage.getOrCreateProfile(walletAddress, referralCode);
+
+      const authUser = await getAuthUser(req);
+      let profile;
+      if (authUser) {
+        profile = await storage.getProfileByUserId(authUser.id);
+        if (!profile) {
+          profile = await storage.getOrCreateProfile(walletAddress, referralCode);
+          await storage.updateProfile(profile.id, { userId: authUser.id } as any);
+        }
+      } else {
+        profile = await storage.getOrCreateProfile(walletAddress, referralCode);
+      }
+
       const streak = await storage.getStreak(profile.id);
       const canClaim = await storage.canClaimToday(profile.id);
       

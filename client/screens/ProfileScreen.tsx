@@ -20,6 +20,7 @@ import * as Haptics from 'expo-haptics';
 
 import { useTheme } from '@/hooks/useTheme';
 import { useProfile } from '@/contexts/ProfileContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Colors, Gradients, Spacing, BorderRadius, Typography } from '@/constants/theme';
 import { getApiUrl } from '@/lib/query-client';
 
@@ -38,6 +39,7 @@ export default function ProfileScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
   const { profile, isLoading, connectWallet, refreshProfile, proThreshold, proUsdValue, messagesUsed, messageLimit, remainingMessages } = useProfile();
+  const { user: authUser, logout } = useAuth();
   
   const [walletInput, setWalletInput] = useState('');
   const [showWalletInput, setShowWalletInput] = useState(false);
@@ -46,6 +48,13 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const isPro = profile?.isPro || false;
+
+  const handleLogout = async () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    await logout();
+  };
 
   const loadTransactions = useCallback(async () => {
     if (!profile) return;
@@ -421,6 +430,25 @@ export default function ProfileScreen() {
           </LinearGradient>
         </Pressable>
       </View>
+
+      <View style={[styles.card, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+        <View style={styles.cardHeader}>
+          <Feather name="user" size={24} color={theme.textSecondary} />
+          <Text style={[styles.cardTitle, { color: theme.text }]}>Account</Text>
+        </View>
+        <View style={styles.accountInfo}>
+          <Text style={[styles.accountLabel, { color: theme.textSecondary }]}>Signed in as</Text>
+          <Text style={[styles.accountUsername, { color: theme.text }]}>{authUser?.username}</Text>
+        </View>
+        <Pressable
+          style={styles.logoutButton}
+          onPress={handleLogout}
+          testID="button-logout"
+        >
+          <Feather name="log-out" size={18} color={Colors.dark.error} />
+          <Text style={styles.logoutText}>Sign Out</Text>
+        </Pressable>
+      </View>
     </ScrollView>
   );
 }
@@ -731,5 +759,32 @@ const styles = StyleSheet.create({
     color: '#000',
     ...Typography.body,
     fontWeight: '700',
+  },
+  accountInfo: {
+    marginBottom: Spacing.lg,
+  },
+  accountLabel: {
+    fontSize: 12,
+    marginBottom: Spacing.xs,
+  },
+  accountUsername: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+  },
+  logoutText: {
+    color: Colors.dark.error,
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

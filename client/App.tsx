@@ -20,10 +20,30 @@ import { queryClient } from "@/lib/query-client";
 
 import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
 import { Colors } from "@/constants/theme";
+import AuthScreen from "@/screens/AuthScreen";
 
 SplashScreen.preventAutoHideAsync();
+
+function AppContent() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
+    return <AuthScreen />;
+  }
+
+  return (
+    <ProfileProvider>
+      <RootStackNavigator />
+    </ProfileProvider>
+  );
+}
 
 const DarkTheme = {
   ...DefaultTheme,
@@ -61,18 +81,18 @@ export default function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <ProfileProvider>
+        <AuthProvider>
           <SafeAreaProvider>
             <GestureHandlerRootView style={styles.root}>
               <KeyboardProvider>
                 <NavigationContainer theme={DarkTheme}>
-                  <RootStackNavigator />
+                  <AppContent />
                 </NavigationContainer>
                 <StatusBar style="light" />
               </KeyboardProvider>
             </GestureHandlerRootView>
           </SafeAreaProvider>
-        </ProfileProvider>
+        </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

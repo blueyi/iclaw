@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { apiRequest, getApiUrl } from '@/lib/query-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface UserProfile {
   id: string;
@@ -53,6 +54,7 @@ const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
 const PROFILE_ID_KEY = '@iclaw_profile_id';
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
+  const { token } = useAuth();
   const [state, setState] = useState<ProfileState>({
     profile: null,
     streak: null,
@@ -65,6 +67,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     error: null,
   });
 
+  const authHeaders = useCallback(() => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return headers;
+  }, [token]);
+
   const loadProfile = useCallback(async () => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
@@ -74,15 +82,29 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       let response;
       if (storedProfileId) {
         try {
-          response = await fetch(new URL(`/api/profile/${storedProfileId}`, getApiUrl()).toString());
+          response = await fetch(new URL(`/api/profile/${storedProfileId}`, getApiUrl()).toString(), {
+            headers: authHeaders(),
+          });
           if (!response.ok) {
-            response = await apiRequest('POST', '/api/profile', {});
+            response = await fetch(new URL('/api/profile', getApiUrl()).toString(), {
+              method: 'POST',
+              headers: authHeaders(),
+              body: JSON.stringify({}),
+            });
           }
         } catch {
-          response = await apiRequest('POST', '/api/profile', {});
+          response = await fetch(new URL('/api/profile', getApiUrl()).toString(), {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({}),
+          });
         }
       } else {
-        response = await apiRequest('POST', '/api/profile', {});
+        response = await fetch(new URL('/api/profile', getApiUrl()).toString(), {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({}),
+        });
       }
       
       const data = await response.json();
@@ -96,7 +118,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           proThreshold: data.proThreshold || 1000,
           proUsdValue: data.proUsdValue || 100,
           messagesUsed: data.messagesUsed || 0,
-          messageLimit: data.messageLimit || 20,
+          messageLimit: data.messageLimit || 5,
           isLoading: false,
           error: null,
         });
@@ -109,7 +131,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         error: 'Failed to load profile',
       }));
     }
-  }, []);
+  }, [authHeaders]);
 
   const refreshProfile = useCallback(async () => {
     if (!state.profile) return;

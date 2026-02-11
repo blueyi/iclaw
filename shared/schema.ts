@@ -30,10 +30,23 @@ export const settings = pgTable("settings", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const sessions = pgTable("sessions", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  token: varchar("token", { length: 64 }).unique().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Session = typeof sessions.$inferSelect;
+
 export const userProfiles = pgTable("user_profiles", {
   id: varchar("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").unique(),
   walletAddress: text("wallet_address").unique(),
   referralCode: varchar("referral_code", { length: 12 }).unique().notNull(),
   referredBy: varchar("referred_by", { length: 12 }),

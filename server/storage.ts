@@ -17,6 +17,7 @@ import {
   type Schedule,
   type InsertSchedule,
   type ActionLog,
+  type Session,
   users,
   messages,
   settings,
@@ -29,9 +30,11 @@ import {
   quickActions,
   schedules,
   actionLogs,
+  sessions,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, asc, sql, and } from "drizzle-orm";
+import { eq, desc, asc, sql, and, gt } from "drizzle-orm";
+import crypto from "crypto";
 
 function generateReferralCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -87,6 +90,11 @@ export interface IStorage {
 
   createActionLog(profileId: string, actionType: string, actionId: string | null, title: string, status: string, result?: string): Promise<ActionLog>;
   getActionLogs(profileId: string, limit?: number): Promise<ActionLog[]>;
+
+  createSession(userId: string): Promise<Session>;
+  getSessionByToken(token: string): Promise<Session | undefined>;
+  deleteSession(token: string): Promise<void>;
+  getProfileByUserId(userId: string): Promise<UserProfile | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -525,6 +533,42 @@ export class DatabaseStorage implements IStorage {
       .where(eq(actionLogs.profileId, profileId))
       .orderBy(desc(actionLogs.createdAt))
       .limit(limit);
+  }
+
+  async createSession(userId: string): Promise<Session> {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    const [session] = await db
+      .insert(sessions)
+      .values({ userId, token, expiresAt })
+      .returning();
+    return session;
+  }
+
+  async getSessionByToken(token: string): Promise<Session | undefined> {
+    const [session] = await db
+      .select()
+      .from(sessions)
+      .where(
+        and(
+          eq(sessions.token, token),
+          gt(sessions.expiresAt, new Date())
+        )
+      );
+    return session || undefined;
+  }
+
+  async deleteSession(token: string): Promise<void> {
+    await db.delete(sessions).where(eq(sessions.token, token));
+  }
+
+  async getProfileByUserId(userId: string): Promise<UserProfile | undefined> {
+    const [profile] = await db
+      .select()
+      .from(userProfiles)
+      .where(eq(userProfiles.userId, userId));
+    return profile || undefined;
   }
 }
 
