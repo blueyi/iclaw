@@ -302,8 +302,8 @@ export default function RewardsScreen() {
           </View>
           <View style={[styles.redemptionCard, { backgroundColor: theme.backgroundSecondary }]}>
             <Feather name="dollar-sign" size={24} color="#FFD700" />
-            <Text style={[styles.redemptionValue, { color: theme.text }]}>100 pts</Text>
-            <Text style={[styles.redemptionLabel, { color: theme.textSecondary }]}>= 1 $CLAW Token</Text>
+            <Text style={[styles.redemptionValue, { color: theme.text }]}>10 pts</Text>
+            <Text style={[styles.redemptionLabel, { color: theme.textSecondary }]}>= 10 $CLAW Tokens</Text>
           </View>
         </View>
         <Text style={[styles.redemptionNote, { color: theme.textSecondary }]}>
