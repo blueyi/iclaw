@@ -75,14 +75,7 @@ export default function AuthScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.logoSection}>
-          <LinearGradient
-            colors={PURPLE_GRADIENT as any}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.logoGradient}
-          >
-            <Feather name="terminal" size={40} color="#fff" />
-          </LinearGradient>
+          <Image source={iclawSymbol} style={styles.symbolImage} />
           <Text style={styles.appName}>I-CLAW</Text>
           <Text style={styles.tagline}>Your AI, Mobilized.</Text>
         </View>
@@ -218,13 +211,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-  logoGradient: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.lg,
+  symbolImage: {
+    width: 160,
+    height: 100,
+    resizeMode: 'contain',
+    marginBottom: Spacing.md,
   },
   appName: {
     fontSize: 32,
