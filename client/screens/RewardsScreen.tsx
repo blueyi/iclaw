@@ -307,7 +307,7 @@ export default function RewardsScreen() {
           </View>
         </View>
         <Text style={[styles.redemptionNote, { color: theme.textSecondary }]}>
-          Official redemption rules and details coming soon.
+          Points redeemable for $CLAW tokens every 30 days. Official rules coming soon.
         </Text>
       </View>
 
