@@ -16,7 +16,7 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors, Spacing, BorderRadius, Gradients } from '@/constants/theme';
-import iclawSymbol from '../../assets/images/iclaw-symbol.jpeg';
+import iclawSymbol from '../../assets/images/iclaw-symbol.png';
 
 const PURPLE_GRADIENT = Gradients.primary;
 
