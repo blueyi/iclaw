@@ -19,10 +19,9 @@ Preferred communication style: Simple, everyday language.
 
 **Framework**: Expo SDK 54 with React Native 0.81, targeting iOS, Android, and Web platforms.
 
-**Navigation**: React Navigation with a stack-only architecture:
-- Chat screen (main conversation interface)
-- Command Center screen (Quick Actions, Schedules, Notifications tabs)
-- Settings screen (modal presentation for configuration)
+**Navigation**: React Navigation with tabs + stack architecture:
+- Bottom tabs: Chat (HomeTab), Gateway (GatewayTab), Rewards (RewardsTab), Profile (ProfileTab)
+- Stack screens: Chat, Settings (modal), CommandCenter, Canvas (WebView), Camera (full-screen)
 
 **State Management**: 
 - TanStack React Query for server state and caching
@@ -36,9 +35,16 @@ Preferred communication style: Simple, everyday language.
 - Platform-specific adaptations (blur effects on iOS, solid backgrounds on Android)
 
 **Key UI Components**:
-- MessageBubble: Gradient styling for AI responses, solid for user messages
+- MessageBubble: Gradient styling for AI responses, solid for user messages, TTS voice readback button on AI messages (expo-speech)
 - MessageInput: Bottom-fixed input with keyboard handling
 - TypingIndicator: Animated dots during AI response generation
+
+**Advanced Features**:
+- Canvas/A2UI screen: WebView loading Gateway's `/__openclaw__/canvas/` endpoint for rich AI interactions
+- Gateway Status Dashboard: Real-time health monitoring, response latency, device node status (battery, network, platform)
+- Camera Integration: Photo capture and visual analysis requests sent to AI
+- Biometric Authentication: Face ID/Touch ID quick login via expo-local-authentication with secure token storage (expo-secure-store)
+- Text-to-Speech: Voice readback of AI responses with per-message speaker toggle
 
 ### Backend Architecture
 
@@ -50,6 +56,11 @@ Preferred communication style: Simple, everyday language.
 - `GET/POST/DELETE /api/quick-actions` - Quick action CRUD and execution
 - `GET/POST/PUT/DELETE /api/schedules` - Schedule/automation CRUD
 - `GET /api/action-logs` - Action execution history
+- `GET /api/gateway/status` - Gateway health check with latency measurement
+- `POST /api/gateway/node-report` - Device node capability reporting
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `GET /api/auth/me` - Token validation for biometric login
 
 **OpenClaw Integration**: The server proxies chat messages to a configurable external OpenClaw AI server URL, falling back to a simulated response when unavailable.
 
@@ -86,3 +97,11 @@ Preferred communication style: Simple, everyday language.
 - `expo-haptics`: Haptic feedback on interactions
 - `expo-blur` / `expo-glass-effect`: Platform-specific visual effects
 - `@tanstack/react-query`: Data fetching and caching
+- `expo-speech`: Text-to-speech for AI message readback
+- `expo-camera`: Camera integration for visual AI analysis
+- `expo-local-authentication`: Biometric login (Face ID/Touch ID)
+- `expo-secure-store`: Secure token storage for biometric auth
+- `expo-device`: Device information for node reporting
+- `expo-battery`: Battery level monitoring for Gateway dashboard
+- `@react-native-community/netinfo`: Network type detection
+- `react-native-webview`: Canvas/A2UI WebView for Gateway interactions
