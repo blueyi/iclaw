@@ -24,6 +24,7 @@ import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollV
 import { ThemedText } from "@/components/ThemedText";
 import { Colors, Spacing, BorderRadius, Typography } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -37,6 +38,7 @@ export default function SettingsScreen() {
   const headerHeight = useHeaderHeight();
   const queryClient = useQueryClient();
 
+  const { biometricAvailable, biometricEnabled, enableBiometric, disableBiometric } = useAuth();
   const [openclawUrl, setOpenclawUrl] = useState("");
   const [saveMessages, setSaveMessages] = useState(true);
 
@@ -167,6 +169,41 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Animated.View>
+
+      {biometricAvailable ? (
+        <Animated.View entering={FadeInDown.delay(250).springify()}>
+          <ThemedText style={styles.sectionTitle}>Security</ThemedText>
+          <View style={styles.card}>
+            <View style={styles.toggleRow}>
+              <View style={styles.toggleInfo}>
+                <ThemedText style={styles.toggleLabel}>
+                  Biometric Login
+                </ThemedText>
+                <ThemedText style={styles.toggleHint}>
+                  Use Face ID or Touch ID for quick access
+                </ThemedText>
+              </View>
+              <Switch
+                value={biometricEnabled}
+                onValueChange={async (value) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  if (value) {
+                    await enableBiometric();
+                  } else {
+                    await disableBiometric();
+                  }
+                }}
+                trackColor={{
+                  false: Colors.dark.backgroundTertiary,
+                  true: Colors.dark.link,
+                }}
+                thumbColor={Colors.dark.text}
+                testID="switch-biometric"
+              />
+            </View>
+          </View>
+        </Animated.View>
+      ) : null}
 
       <Animated.View entering={FadeInDown.delay(300).springify()}>
         <ThemedText style={styles.sectionTitle}>Data</ThemedText>

@@ -5,6 +5,8 @@ import MainTabNavigator from "@/navigation/MainTabNavigator";
 import ChatScreen from "@/screens/ChatScreen";
 import SettingsScreen from "@/screens/SettingsScreen";
 import CommandCenterScreen from "@/screens/CommandCenterScreen";
+import CanvasScreen from "@/screens/CanvasScreen";
+import CameraScreen from "@/screens/CameraScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { HeaderTitle } from "@/components/HeaderTitle";
 
@@ -13,6 +15,8 @@ export type RootStackParamList = {
   Chat: { conversationId?: string };
   Settings: undefined;
   CommandCenter: undefined;
+  Canvas: undefined;
+  Camera: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -41,6 +45,21 @@ export default function RootStackNavigator() {
         options={{
           headerTitle: "Command Center",
           headerBackTitle: "Back",
+        }}
+      />
+      <Stack.Screen
+        name="Canvas"
+        component={CanvasScreen}
+        options={{
+          headerTitle: "Canvas",
+          headerBackTitle: "Back",
+        }}
+      />
+      <Stack.Screen
+        name="Camera"
+        component={CameraScreen}
+        options={{
+          headerShown: false,
         }}
       />
       <Stack.Screen

@@ -6,10 +6,13 @@ import { Platform, StyleSheet } from "react-native";
 import HomeStackNavigator from "@/navigation/HomeStackNavigator";
 import RewardsStackNavigator from "@/navigation/RewardsStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
+import GatewayScreen from "@/screens/GatewayScreen";
 import { useTheme } from "@/hooks/useTheme";
+import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type MainTabParamList = {
   HomeTab: undefined;
+  GatewayTab: undefined;
   RewardsTab: undefined;
   ProfileTab: undefined;
 };
@@ -18,6 +21,7 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export default function MainTabNavigator() {
   const { theme, isDark } = useTheme();
+  const screenOptions = useScreenOptions();
 
   return (
     <Tab.Navigator
@@ -52,6 +56,19 @@ export default function MainTabNavigator() {
           title: "Chat",
           tabBarIcon: ({ color, size }) => (
             <Feather name="message-circle" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="GatewayTab"
+        component={GatewayScreen}
+        options={{
+          title: "Gateway",
+          headerShown: true,
+          headerTitle: "Gateway",
+          ...screenOptions,
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="cpu" size={size} color={color} />
           ),
         }}
       />

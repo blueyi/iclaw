@@ -697,6 +697,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/gateway/status", async (req, res) => {
+    try {
+      const settings = await storage.getSettings();
+      if (!settings?.openclawUrl) {
+        return res.json({
+          connected: false,
+          error: "No Gateway URL configured",
+        });
+      }
+
+      const startTime = Date.now();
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const healthResponse = await fetch(
+          `${settings.openclawUrl}/api/health`,
+          { signal: controller.signal }
+        );
+        clearTimeout(timeout);
+        const latency = Date.now() - startTime;
+
+        if (healthResponse.ok) {
+          const data = await healthResponse.json();
+          return res.json({
+            connected: true,
+            latency,
+            url: settings.openclawUrl,
+            serverInfo: data,
+          });
+        }
+
+        return res.json({
+          connected: false,
+          latency,
+          url: settings.openclawUrl,
+          error: `Server returned ${healthResponse.status}`,
+        });
+      } catch (fetchError: any) {
+        const latency = Date.now() - startTime;
+        return res.json({
+          connected: false,
+          latency,
+          url: settings.openclawUrl,
+          error: fetchError.name === "AbortError" ? "Connection timed out" : "Unable to reach server",
+        });
+      }
+    } catch (error) {
+      console.error("Error checking gateway status:", error);
+      res.status(500).json({ error: "Failed to check gateway status" });
+    }
+  });
+
+  app.post("/api/gateway/node-report", async (req, res) => {
+    try {
+      const { deviceName, platform, batteryLevel, networkType, locationAvailable } = req.body;
+      res.json({
+        acknowledged: true,
+        nodeId: `${platform}-${deviceName}`.toLowerCase().replace(/\s+/g, '-'),
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error processing node report:", error);
+      res.status(500).json({ error: "Failed to process node report" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
