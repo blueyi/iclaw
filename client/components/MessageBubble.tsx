@@ -1,6 +1,8 @@
-import React from "react";
-import { View, StyleSheet, Dimensions } from "react-native";
+import React, { useState } from "react";
+import { View, StyleSheet, Dimensions, Pressable } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Speech from "expo-speech";
+import { Feather } from "@expo/vector-icons";
 import Animated, {
   FadeInUp,
   useAnimatedStyle,
@@ -29,6 +31,7 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const isUser = role === "user";
   const scale = useSharedValue(1);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -41,6 +44,24 @@ export function MessageBubble({
       minute: "2-digit",
       hour12: true,
     }).format(date);
+  };
+
+  const handleTTSPress = async () => {
+    if (isSpeaking) {
+      Speech.stop();
+      setIsSpeaking(false);
+    } else {
+      setIsSpeaking(true);
+      try {
+        await Speech.speak(content, {
+          language: "en",
+          rate: 0.9,
+          onDone: () => setIsSpeaking(false),
+        });
+      } catch (error) {
+        setIsSpeaking(false);
+      }
+    }
   };
 
   return (
@@ -67,14 +88,29 @@ export function MessageBubble({
           <ThemedText style={styles.messageText}>{content}</ThemedText>
         </View>
       ) : (
-        <LinearGradient
-          colors={[Colors.dark.gradientStart, Colors.dark.gradientEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.bubble, styles.assistantBubble]}
-        >
-          <ThemedText style={styles.messageText}>{content}</ThemedText>
-        </LinearGradient>
+        <View>
+          <LinearGradient
+            colors={['rgba(155,92,255,0.35)', 'rgba(99,102,241,0.3)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.bubble, styles.assistantBubble]}
+          >
+            <ThemedText style={styles.messageText}>{content}</ThemedText>
+          </LinearGradient>
+          <View style={styles.ttsRow}>
+            <Pressable
+              onPress={handleTTSPress}
+              testID={`button-tts-${index}`}
+              style={styles.ttsButton}
+            >
+              <Feather
+                name={isSpeaking ? "volume-2" : "volume-x"}
+                size={14}
+                color={Colors.dark.textTertiary}
+              />
+            </Pressable>
+          </View>
+        </View>
       )}
     </Animated.View>
   );
@@ -119,5 +155,14 @@ const styles = StyleSheet.create({
   },
   timestampAssistant: {
     marginLeft: Spacing.xs,
+  },
+  ttsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+    gap: 4,
+  },
+  ttsButton: {
+    padding: 4,
   },
 });
