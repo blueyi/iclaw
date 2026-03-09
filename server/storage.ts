@@ -18,6 +18,16 @@ import {
   type InsertSchedule,
   type ActionLog,
   type Session,
+  type AgentThought,
+  type InsertAgentThought,
+  type TokenCost,
+  type InsertTokenCost,
+  type SystemMetric,
+  type InsertSystemMetric,
+  type AgentMemory,
+  type InsertAgentMemory,
+  type EmergencyStop,
+  type InsertEmergencyStop,
   users,
   messages,
   settings,
@@ -31,6 +41,11 @@ import {
   schedules,
   actionLogs,
   sessions,
+  agentThoughts,
+  tokenCosts,
+  systemMetrics,
+  agentMemories,
+  emergencyStops,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, sql, and, gt } from "drizzle-orm";
@@ -95,6 +110,25 @@ export interface IStorage {
   getSessionByToken(token: string): Promise<Session | undefined>;
   deleteSession(token: string): Promise<void>;
   getProfileByUserId(userId: string): Promise<UserProfile | undefined>;
+
+  getAgentThoughts(profileId: string, sessionId?: string, limit?: number): Promise<AgentThought[]>;
+  createAgentThought(data: InsertAgentThought): Promise<AgentThought>;
+
+  getTokenCosts(profileId: string, limit?: number): Promise<TokenCost[]>;
+  getTokenCostSummary(profileId: string): Promise<{ byModel: Record<string, { count: number; totalCost: number; totalInput: number; totalOutput: number }>; totalCost: number }>;
+  createTokenCost(data: InsertTokenCost): Promise<TokenCost>;
+
+  getLatestMetrics(): Promise<SystemMetric | undefined>;
+  createMetrics(data: InsertSystemMetric): Promise<SystemMetric>;
+  getMetricsHistory(limit?: number): Promise<SystemMetric[]>;
+
+  getMemories(profileId: string, type?: string, limit?: number): Promise<AgentMemory[]>;
+  createMemory(data: InsertAgentMemory): Promise<AgentMemory>;
+  deleteMemory(id: string, profileId: string): Promise<void>;
+
+  getEmergencyStops(profileId: string, limit?: number): Promise<EmergencyStop[]>;
+  createEmergencyStop(data: InsertEmergencyStop): Promise<EmergencyStop>;
+  resolveEmergencyStop(id: string, profileId: string): Promise<EmergencyStop>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -569,6 +603,127 @@ export class DatabaseStorage implements IStorage {
       .from(userProfiles)
       .where(eq(userProfiles.userId, userId));
     return profile || undefined;
+  }
+
+  async getAgentThoughts(profileId: string, sessionId?: string, limit = 50): Promise<AgentThought[]> {
+    const conditions = [eq(agentThoughts.profileId, profileId)];
+    if (sessionId) conditions.push(eq(agentThoughts.sessionId, sessionId));
+    return db
+      .select()
+      .from(agentThoughts)
+      .where(and(...conditions))
+      .orderBy(desc(agentThoughts.createdAt))
+      .limit(limit);
+  }
+
+  async createAgentThought(data: InsertAgentThought): Promise<AgentThought> {
+    const [thought] = await db.insert(agentThoughts).values(data).returning();
+    return thought;
+  }
+
+  async getTokenCosts(profileId: string, limit = 50): Promise<TokenCost[]> {
+    return db
+      .select()
+      .from(tokenCosts)
+      .where(eq(tokenCosts.profileId, profileId))
+      .orderBy(desc(tokenCosts.createdAt))
+      .limit(limit);
+  }
+
+  async getTokenCostSummary(profileId: string): Promise<{ byModel: Record<string, { count: number; totalCost: number; totalInput: number; totalOutput: number }>; totalCost: number }> {
+    const costs = await db
+      .select()
+      .from(tokenCosts)
+      .where(eq(tokenCosts.profileId, profileId));
+
+    const byModel: Record<string, { count: number; totalCost: number; totalInput: number; totalOutput: number }> = {};
+    let totalCost = 0;
+
+    for (const c of costs) {
+      const costNum = parseFloat(c.cost) || 0;
+      totalCost += costNum;
+      if (!byModel[c.model]) {
+        byModel[c.model] = { count: 0, totalCost: 0, totalInput: 0, totalOutput: 0 };
+      }
+      byModel[c.model].count++;
+      byModel[c.model].totalCost += costNum;
+      byModel[c.model].totalInput += c.inputTokens;
+      byModel[c.model].totalOutput += c.outputTokens;
+    }
+
+    return { byModel, totalCost };
+  }
+
+  async createTokenCost(data: InsertTokenCost): Promise<TokenCost> {
+    const [cost] = await db.insert(tokenCosts).values(data).returning();
+    return cost;
+  }
+
+  async getLatestMetrics(): Promise<SystemMetric | undefined> {
+    const [metric] = await db
+      .select()
+      .from(systemMetrics)
+      .orderBy(desc(systemMetrics.createdAt))
+      .limit(1);
+    return metric || undefined;
+  }
+
+  async createMetrics(data: InsertSystemMetric): Promise<SystemMetric> {
+    const [metric] = await db.insert(systemMetrics).values(data).returning();
+    return metric;
+  }
+
+  async getMetricsHistory(limit = 20): Promise<SystemMetric[]> {
+    return db
+      .select()
+      .from(systemMetrics)
+      .orderBy(desc(systemMetrics.createdAt))
+      .limit(limit);
+  }
+
+  async getMemories(profileId: string, type?: string, limit = 50): Promise<AgentMemory[]> {
+    const conditions = [eq(agentMemories.profileId, profileId)];
+    if (type) conditions.push(eq(agentMemories.memoryType, type));
+    return db
+      .select()
+      .from(agentMemories)
+      .where(and(...conditions))
+      .orderBy(desc(agentMemories.createdAt))
+      .limit(limit);
+  }
+
+  async createMemory(data: InsertAgentMemory): Promise<AgentMemory> {
+    const [memory] = await db.insert(agentMemories).values(data).returning();
+    return memory;
+  }
+
+  async deleteMemory(id: string, profileId: string): Promise<void> {
+    await db
+      .delete(agentMemories)
+      .where(and(eq(agentMemories.id, id), eq(agentMemories.profileId, profileId)));
+  }
+
+  async getEmergencyStops(profileId: string, limit = 20): Promise<EmergencyStop[]> {
+    return db
+      .select()
+      .from(emergencyStops)
+      .where(eq(emergencyStops.profileId, profileId))
+      .orderBy(desc(emergencyStops.createdAt))
+      .limit(limit);
+  }
+
+  async createEmergencyStop(data: InsertEmergencyStop): Promise<EmergencyStop> {
+    const [stop] = await db.insert(emergencyStops).values(data).returning();
+    return stop;
+  }
+
+  async resolveEmergencyStop(id: string, profileId: string): Promise<EmergencyStop> {
+    const [updated] = await db
+      .update(emergencyStops)
+      .set({ status: "resolved", resolvedAt: new Date() })
+      .where(and(eq(emergencyStops.id, id), eq(emergencyStops.profileId, profileId)))
+      .returning();
+    return updated;
   }
 }
 

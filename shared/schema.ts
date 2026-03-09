@@ -242,3 +242,69 @@ export const messageUsage = pgTable("message_usage", {
 });
 
 export type MessageUsage = typeof messageUsage.$inferSelect;
+
+export const agentThoughts = pgTable("agent_thoughts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  profileId: varchar("profile_id").notNull(),
+  type: varchar("type", { length: 30 }).notNull(),
+  content: text("content").notNull(),
+  metadata: text("metadata"),
+  sessionId: varchar("session_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const tokenCosts = pgTable("token_costs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  profileId: varchar("profile_id").notNull(),
+  model: varchar("model", { length: 100 }).notNull(),
+  inputTokens: integer("input_tokens").default(0).notNull(),
+  outputTokens: integer("output_tokens").default(0).notNull(),
+  cost: text("cost").notNull(),
+  requestType: varchar("request_type", { length: 30 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const systemMetrics = pgTable("system_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  cpuPercent: integer("cpu_percent").default(0).notNull(),
+  memoryPercent: integer("memory_percent").default(0).notNull(),
+  diskPercent: integer("disk_percent").default(0).notNull(),
+  cpuModel: text("cpu_model"),
+  totalMemoryMb: integer("total_memory_mb"),
+  totalDiskMb: integer("total_disk_mb"),
+  uptime: integer("uptime"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const agentMemories = pgTable("agent_memories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  profileId: varchar("profile_id").notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  memoryType: varchar("memory_type", { length: 30 }).notNull(),
+  tags: text("tags"),
+  importance: integer("importance").default(3).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const emergencyStops = pgTable("emergency_stops", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  profileId: varchar("profile_id").notNull(),
+  reason: text("reason").notNull(),
+  stoppedProcesses: text("stopped_processes"),
+  status: varchar("status", { length: 20 }).default("triggered").notNull(),
+  triggeredAt: timestamp("triggered_at").defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type AgentThought = typeof agentThoughts.$inferSelect;
+export type InsertAgentThought = typeof agentThoughts.$inferInsert;
+export type TokenCost = typeof tokenCosts.$inferSelect;
+export type InsertTokenCost = typeof tokenCosts.$inferInsert;
+export type SystemMetric = typeof systemMetrics.$inferSelect;
+export type InsertSystemMetric = typeof systemMetrics.$inferInsert;
+export type AgentMemory = typeof agentMemories.$inferSelect;
+export type InsertAgentMemory = typeof agentMemories.$inferInsert;
+export type EmergencyStop = typeof emergencyStops.$inferSelect;
+export type InsertEmergencyStop = typeof emergencyStops.$inferInsert;

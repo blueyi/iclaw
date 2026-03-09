@@ -763,6 +763,245 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/agent-thoughts/:profileId", async (req, res) => {
+    try {
+      const sessionId = req.query.sessionId as string | undefined;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const thoughts = await storage.getAgentThoughts(req.params.profileId, sessionId, limit);
+      res.json(thoughts);
+    } catch (error) {
+      console.error("Error fetching agent thoughts:", error);
+      res.status(500).json({ error: "Failed to fetch agent thoughts" });
+    }
+  });
+
+  app.post("/api/agent-thoughts", async (req, res) => {
+    try {
+      const { profileId, type, content, metadata, sessionId } = req.body;
+      if (!profileId || !type || !content) {
+        return res.status(400).json({ error: "profileId, type, and content are required" });
+      }
+      const thought = await storage.createAgentThought({
+        profileId,
+        type,
+        content,
+        metadata: metadata ? JSON.stringify(metadata) : null,
+        sessionId: sessionId || null,
+      });
+      res.json(thought);
+    } catch (error) {
+      console.error("Error creating agent thought:", error);
+      res.status(500).json({ error: "Failed to create agent thought" });
+    }
+  });
+
+  app.get("/api/token-costs/:profileId", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const costs = await storage.getTokenCosts(req.params.profileId, limit);
+      res.json(costs);
+    } catch (error) {
+      console.error("Error fetching token costs:", error);
+      res.status(500).json({ error: "Failed to fetch token costs" });
+    }
+  });
+
+  app.get("/api/token-costs/:profileId/summary", async (req, res) => {
+    try {
+      const summary = await storage.getTokenCostSummary(req.params.profileId);
+      res.json(summary);
+    } catch (error) {
+      console.error("Error fetching cost summary:", error);
+      res.status(500).json({ error: "Failed to fetch cost summary" });
+    }
+  });
+
+  app.post("/api/token-costs", async (req, res) => {
+    try {
+      const { profileId, model, inputTokens, outputTokens, cost, requestType } = req.body;
+      if (!profileId || !model || !cost || !requestType) {
+        return res.status(400).json({ error: "profileId, model, cost, and requestType are required" });
+      }
+      const entry = await storage.createTokenCost({
+        profileId,
+        model,
+        inputTokens: inputTokens || 0,
+        outputTokens: outputTokens || 0,
+        cost: String(cost),
+        requestType,
+      });
+      res.json(entry);
+    } catch (error) {
+      console.error("Error creating token cost:", error);
+      res.status(500).json({ error: "Failed to create token cost" });
+    }
+  });
+
+  app.get("/api/system-metrics", async (req, res) => {
+    try {
+      const metrics = await storage.getLatestMetrics();
+      res.json(metrics || { cpuPercent: 0, memoryPercent: 0, diskPercent: 0 });
+    } catch (error) {
+      console.error("Error fetching system metrics:", error);
+      res.status(500).json({ error: "Failed to fetch system metrics" });
+    }
+  });
+
+  app.get("/api/system-metrics/history", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 20;
+      const history = await storage.getMetricsHistory(limit);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching metrics history:", error);
+      res.status(500).json({ error: "Failed to fetch metrics history" });
+    }
+  });
+
+  app.post("/api/system-metrics", async (req, res) => {
+    try {
+      const { cpuPercent, memoryPercent, diskPercent, cpuModel, totalMemoryMb, totalDiskMb, uptime } = req.body;
+      const metric = await storage.createMetrics({
+        cpuPercent: cpuPercent || 0,
+        memoryPercent: memoryPercent || 0,
+        diskPercent: diskPercent || 0,
+        cpuModel: cpuModel || null,
+        totalMemoryMb: totalMemoryMb || null,
+        totalDiskMb: totalDiskMb || null,
+        uptime: uptime || null,
+      });
+      res.json(metric);
+    } catch (error) {
+      console.error("Error creating system metrics:", error);
+      res.status(500).json({ error: "Failed to create system metrics" });
+    }
+  });
+
+  app.get("/api/memories/:profileId", async (req, res) => {
+    try {
+      const type = req.query.type as string | undefined;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const memories = await storage.getMemories(req.params.profileId, type, limit);
+      res.json(memories);
+    } catch (error) {
+      console.error("Error fetching memories:", error);
+      res.status(500).json({ error: "Failed to fetch memories" });
+    }
+  });
+
+  app.post("/api/memories", async (req, res) => {
+    try {
+      const { profileId, title, content, memoryType, tags, importance } = req.body;
+      if (!profileId || !title || !content || !memoryType) {
+        return res.status(400).json({ error: "profileId, title, content, and memoryType are required" });
+      }
+      const memory = await storage.createMemory({
+        profileId,
+        title,
+        content,
+        memoryType,
+        tags: tags || null,
+        importance: importance || 3,
+      });
+      res.json(memory);
+    } catch (error) {
+      console.error("Error creating memory:", error);
+      res.status(500).json({ error: "Failed to create memory" });
+    }
+  });
+
+  app.delete("/api/memories/:id", async (req, res) => {
+    try {
+      const { profileId } = req.body;
+      if (!profileId) {
+        return res.status(400).json({ error: "profileId is required" });
+      }
+      await storage.deleteMemory(req.params.id, profileId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting memory:", error);
+      res.status(500).json({ error: "Failed to delete memory" });
+    }
+  });
+
+  app.get("/api/emergency-stops/:profileId", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 20;
+      const stops = await storage.getEmergencyStops(req.params.profileId, limit);
+      res.json(stops);
+    } catch (error) {
+      console.error("Error fetching emergency stops:", error);
+      res.status(500).json({ error: "Failed to fetch emergency stops" });
+    }
+  });
+
+  app.post("/api/emergency-stop", async (req, res) => {
+    try {
+      const { profileId, reason } = req.body;
+      if (!profileId || !reason) {
+        return res.status(400).json({ error: "profileId and reason are required" });
+      }
+
+      let stoppedProcesses = "All active processes";
+      const settings = await storage.getSettings();
+      if (settings?.openclawUrl) {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 5000);
+          const stopResponse = await fetch(`${settings.openclawUrl}/api/emergency-stop`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reason }),
+            signal: controller.signal,
+          });
+          clearTimeout(timeout);
+          if (stopResponse.ok) {
+            const data = await stopResponse.json();
+            stoppedProcesses = data.stoppedProcesses || "All processes stopped via Gateway";
+          }
+        } catch {
+          stoppedProcesses = "Gateway unreachable - local stop only";
+        }
+      }
+
+      const activeSchedules = await storage.getSchedules(profileId);
+      for (const schedule of activeSchedules) {
+        if (schedule.isActive) {
+          await storage.updateSchedule(schedule.id, profileId, { isActive: false });
+        }
+      }
+
+      const stop = await storage.createEmergencyStop({
+        profileId,
+        reason,
+        stoppedProcesses,
+        status: "triggered",
+      });
+
+      await storage.createActionLog(profileId, "emergency_stop", stop.id, "Emergency Stop Triggered", "completed", reason);
+
+      res.json(stop);
+    } catch (error) {
+      console.error("Error triggering emergency stop:", error);
+      res.status(500).json({ error: "Failed to trigger emergency stop" });
+    }
+  });
+
+  app.put("/api/emergency-stop/:id/resolve", async (req, res) => {
+    try {
+      const { profileId } = req.body;
+      if (!profileId) {
+        return res.status(400).json({ error: "profileId is required" });
+      }
+      const stop = await storage.resolveEmergencyStop(req.params.id, profileId);
+      await storage.createActionLog(profileId, "emergency_stop", stop.id, "Emergency Stop Resolved", "completed", "Resolved by user");
+      res.json(stop);
+    } catch (error) {
+      console.error("Error resolving emergency stop:", error);
+      res.status(500).json({ error: "Failed to resolve emergency stop" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
