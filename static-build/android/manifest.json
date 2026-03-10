@@ -1,0 +1,101 @@
+{
+  "id": "4b3ef092-e5b8-4bd6-8983-9109b6a4a114",
+  "createdAt": "2026-03-10T05:04:46.302Z",
+  "runtimeVersion": "exposdk:54.0.0",
+  "launchAsset": {
+    "key": "bundle-1773119086302-1228",
+    "contentType": "application/javascript",
+    "url": "https://da3e537f-27da-4e3f-96db-c4c5894cddc9-00-3lh7m57hozvt2.worf.replit.dev/1773119086302-1228/_expo/static/js/android/bundle.js"
+  },
+  "assets": [],
+  "metadata": {},
+  "extra": {
+    "eas": {},
+    "expoClient": {
+      "name": "I-Claw",
+      "slug": "i-claw",
+      "version": "1.0.0",
+      "orientation": "portrait",
+      "icon": "./assets/images/icon.png",
+      "scheme": "iclaw",
+      "userInterfaceStyle": "dark",
+      "newArchEnabled": true,
+      "ios": {
+        "supportsTablet": true,
+        "bundleIdentifier": "com.iclaw.mobile"
+      },
+      "android": {
+        "adaptiveIcon": {
+          "backgroundColor": "#070812",
+          "foregroundImage": "./assets/images/icon.png",
+          "foregroundImageUrl": "https://da3e537f-27da-4e3f-96db-c4c5894cddc9-00-3lh7m57hozvt2.worf.replit.dev/assets/./assets/images/icon.png"
+        },
+        "edgeToEdgeEnabled": true,
+        "predictiveBackGestureEnabled": false,
+        "package": "com.iclaw.mobile"
+      },
+      "web": {
+        "output": "single",
+        "favicon": "./assets/images/icon.png"
+      },
+      "plugins": [
+        [
+          "expo-splash-screen",
+          {
+            "image": "./assets/images/splash-icon.png",
+            "imageWidth": 200,
+            "resizeMode": "contain",
+            "backgroundColor": "#070812",
+            "dark": {
+              "backgroundColor": "#070812"
+            }
+          }
+        ],
+        "expo-web-browser"
+      ],
+      "experiments": {
+        "reactCompiler": true
+      },
+      "_internal": {
+        "isDebug": false,
+        "projectRoot": "/home/runner/workspace",
+        "dynamicConfigPath": {},
+        "staticConfigPath": "/home/runner/workspace/app.json",
+        "packageJsonPath": "/home/runner/workspace/package.json",
+        "pluginHistory": {
+          "expo-splash-screen": {
+            "name": "expo-splash-screen",
+            "version": "31.0.11"
+          },
+          "expo-web-browser": {
+            "name": "expo-web-browser",
+            "version": "15.0.9"
+          }
+        }
+      },
+      "sdkVersion": "54.0.0",
+      "platforms": [
+        "ios",
+        "android",
+        "web"
+      ],
+      "androidStatusBar": {
+        "backgroundColor": "#070812"
+      },
+      "iconUrl": "https://da3e537f-27da-4e3f-96db-c4c5894cddc9-00-3lh7m57hozvt2.worf.replit.dev/assets/./assets/images/icon.png",
+      "hostUri": "da3e537f-27da-4e3f-96db-c4c5894cddc9-00-3lh7m57hozvt2.worf.replit.dev/android"
+    },
+    "expoGo": {
+      "debuggerHost": "da3e537f-27da-4e3f-96db-c4c5894cddc9-00-3lh7m57hozvt2.worf.replit.dev/android",
+      "developer": {
+        "tool": "expo-cli",
+        "projectRoot": "/home/runner/workspace"
+      },
+      "packagerOpts": {
+        "dev": false
+      },
+      "mainModuleName": "client/index"
+    },
+    "scopeKey": "@anonymous/i-claw-ad5ff041-997b-4d82-b42d-64f5dd31e1a2"
+  }
+}

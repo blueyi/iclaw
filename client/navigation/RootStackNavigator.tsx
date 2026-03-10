@@ -7,6 +7,11 @@ import SettingsScreen from "@/screens/SettingsScreen";
 import CommandCenterScreen from "@/screens/CommandCenterScreen";
 import CanvasScreen from "@/screens/CanvasScreen";
 import CameraScreen from "@/screens/CameraScreen";
+import LiveThoughtsScreen from "@/screens/LiveThoughtsScreen";
+import TokenCostsScreen from "@/screens/TokenCostsScreen";
+import SystemMetricsScreen from "@/screens/SystemMetricsScreen";
+import MissionControlScreen from "@/screens/MissionControlScreen";
+import MemoryFeedScreen from "@/screens/MemoryFeedScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { HeaderTitle } from "@/components/HeaderTitle";
 
@@ -17,6 +22,11 @@ export type RootStackParamList = {
   CommandCenter: undefined;
   Canvas: undefined;
   Camera: undefined;
+  LiveThoughts: undefined;
+  TokenCosts: undefined;
+  SystemMetrics: undefined;
+  MissionControl: undefined;
+  MemoryFeed: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -68,6 +78,46 @@ export default function RootStackNavigator() {
         options={{
           presentation: "modal",
           headerTitle: "Settings",
+        }}
+      />
+      <Stack.Screen
+        name="LiveThoughts"
+        component={LiveThoughtsScreen}
+        options={{
+          headerTitle: "Live Thoughts",
+          headerBackTitle: "Back",
+        }}
+      />
+      <Stack.Screen
+        name="TokenCosts"
+        component={TokenCostsScreen}
+        options={{
+          headerTitle: "Token Costs",
+          headerBackTitle: "Back",
+        }}
+      />
+      <Stack.Screen
+        name="SystemMetrics"
+        component={SystemMetricsScreen}
+        options={{
+          headerTitle: "System Metrics",
+          headerBackTitle: "Back",
+        }}
+      />
+      <Stack.Screen
+        name="MissionControl"
+        component={MissionControlScreen}
+        options={{
+          headerTitle: "Mission Control",
+          headerBackTitle: "Back",
+        }}
+      />
+      <Stack.Screen
+        name="MemoryFeed"
+        component={MemoryFeedScreen}
+        options={{
+          headerTitle: "Memory Feed",
+          headerBackTitle: "Back",
         }}
       />
     </Stack.Navigator>

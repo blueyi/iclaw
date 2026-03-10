@@ -380,6 +380,82 @@ export default function GatewayScreen() {
           <Text style={[styles.actionLabel, { color: theme.text }]}>Canvas</Text>
         </Pressable>
       </View>
+
+      <Text style={[styles.bridgeSectionTitle, { color: theme.textSecondary }]}>
+        ClawBridge
+      </Text>
+
+      <View style={styles.bridgeGrid}>
+        <Pressable
+          style={[styles.bridgeCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+          onPress={() => navigation.navigate('LiveThoughts')}
+          testID="button-live-thoughts"
+        >
+          <View style={[styles.bridgeIconWrap, { backgroundColor: 'rgba(155,92,255,0.12)' }]}>
+            <Feather name="activity" size={22} color="#9b5cff" />
+          </View>
+          <Text style={[styles.bridgeCardTitle, { color: theme.text }]}>Live Thoughts</Text>
+          <Text style={[styles.bridgeCardDesc, { color: theme.textTertiary }]}>
+            Agent chain of thought
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.bridgeCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+          onPress={() => navigation.navigate('TokenCosts')}
+          testID="button-token-costs"
+        >
+          <View style={[styles.bridgeIconWrap, { backgroundColor: 'rgba(34,211,238,0.12)' }]}>
+            <Feather name="dollar-sign" size={22} color="#22d3ee" />
+          </View>
+          <Text style={[styles.bridgeCardTitle, { color: theme.text }]}>Token Costs</Text>
+          <Text style={[styles.bridgeCardDesc, { color: theme.textTertiary }]}>
+            API spend by model
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.bridgeCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+          onPress={() => navigation.navigate('SystemMetrics')}
+          testID="button-system-metrics"
+        >
+          <View style={[styles.bridgeIconWrap, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
+            <Feather name="cpu" size={22} color="#10b981" />
+          </View>
+          <Text style={[styles.bridgeCardTitle, { color: theme.text }]}>System Metrics</Text>
+          <Text style={[styles.bridgeCardDesc, { color: theme.textTertiary }]}>
+            Server resource usage
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.bridgeCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+          onPress={() => navigation.navigate('MissionControl')}
+          testID="button-mission-control"
+        >
+          <View style={[styles.bridgeIconWrap, { backgroundColor: 'rgba(239,68,68,0.12)' }]}>
+            <Feather name="alert-octagon" size={22} color="#EF4444" />
+          </View>
+          <Text style={[styles.bridgeCardTitle, { color: theme.text }]}>Mission Control</Text>
+          <Text style={[styles.bridgeCardDesc, { color: theme.textTertiary }]}>
+            Emergency stop switch
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.bridgeCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+          onPress={() => navigation.navigate('MemoryFeed')}
+          testID="button-memory-feed"
+        >
+          <View style={[styles.bridgeIconWrap, { backgroundColor: 'rgba(245,158,11,0.12)' }]}>
+            <Feather name="book" size={22} color="#F59E0B" />
+          </View>
+          <Text style={[styles.bridgeCardTitle, { color: theme.text }]}>Memory Feed</Text>
+          <Text style={[styles.bridgeCardDesc, { color: theme.textTertiary }]}>
+            Agent journal timeline
+          </Text>
+        </Pressable>
+      </View>
     </ScrollView>
   );
 }
@@ -539,5 +615,37 @@ const styles = StyleSheet.create({
   actionLabel: {
     ...Typography.caption,
     fontWeight: '600',
+  },
+  bridgeSectionTitle: {
+    ...Typography.h4,
+    marginBottom: Spacing.md,
+  },
+  bridgeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    marginBottom: Spacing.xl,
+  },
+  bridgeCard: {
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    padding: Spacing.lg,
+    gap: Spacing.sm,
+    flexGrow: 1,
+    flexBasis: '45%',
+  },
+  bridgeIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bridgeCardTitle: {
+    ...Typography.small,
+    fontWeight: '700',
+  },
+  bridgeCardDesc: {
+    ...Typography.caption,
   },
 });

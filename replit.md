@@ -22,6 +22,7 @@ Preferred communication style: Simple, everyday language.
 **Navigation**: React Navigation with tabs + stack architecture:
 - Bottom tabs: Chat (HomeTab), Gateway (GatewayTab), Rewards (RewardsTab), Profile (ProfileTab)
 - Stack screens: Chat, Settings (modal), CommandCenter, Canvas (WebView), Camera (full-screen)
+- ClawBridge stack screens (accessed from Gateway tab): LiveThoughts, TokenCosts, SystemMetrics, MissionControl, MemoryFeed
 
 **State Management**: 
 - TanStack React Query for server state and caching
@@ -58,6 +59,15 @@ Preferred communication style: Simple, everyday language.
 - `GET /api/action-logs` - Action execution history
 - `GET /api/gateway/status` - Gateway health check with latency measurement
 - `POST /api/gateway/node-report` - Device node capability reporting
+- `GET/POST /api/agent-thoughts/:profileId` - Agent chain-of-thought feed
+- `GET/POST /api/token-costs/:profileId` - API token cost tracking
+- `GET /api/token-costs/:profileId/summary` - Cost summary by model
+- `GET/POST /api/system-metrics` - System resource monitoring
+- `GET /api/system-metrics/history` - Historical metrics
+- `GET/POST/DELETE /api/memories/:profileId` - Agent memory journal
+- `GET /api/emergency-stops/:profileId` - Emergency stop history
+- `POST /api/emergency-stop` - Trigger emergency stop
+- `PUT /api/emergency-stop/:id/resolve` - Resolve an emergency stop
 - `POST /api/auth/register` - User registration
 - `POST /api/auth/login` - User login
 - `GET /api/auth/me` - Token validation for biometric login
@@ -75,6 +85,11 @@ Preferred communication style: Simple, everyday language.
 - `quick_actions`: User quick actions (title, description, icon, command)
 - `schedules`: Automated task schedules (title, command, interval, active state)
 - `action_logs`: Execution history for actions and schedules
+- `agent_thoughts`: Agent chain-of-thought entries (type, content, metadata, sessionId)
+- `token_costs`: API token cost tracking (model, inputTokens, outputTokens, cost, requestType)
+- `system_metrics`: System resource snapshots (cpuPercent, memoryPercent, diskPercent, uptime)
+- `agent_memories`: Agent memory journal (title, content, memoryType, tags, importance)
+- `emergency_stops`: Emergency stop records (reason, stoppedProcesses, status, triggeredAt, resolvedAt)
 
 **Migrations**: Managed via `drizzle-kit push` command.
 
