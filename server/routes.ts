@@ -2,6 +2,9 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "node:http";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
+import { URL } from "node:url";
+import * as dns from "node:dns/promises";
+import * as net from "node:net";
 
 const DEFAULT_CONVERSATION_ID = "default";
 const PRO_TOKEN_THRESHOLD = 1000;
@@ -18,6 +21,92 @@ async function getAuthUser(req: Request) {
   if (!session) return null;
   const user = await storage.getUser(session.userId);
   return user || null;
+}
+
+async function requireAuthWithProfile(req: Request, res: Response): Promise<{ userId: string; profileId: string } | null> {
+  const user = await getAuthUser(req);
+  if (!user) {
+    res.status(401).json({ error: "Authentication required" });
+    return null;
+  }
+  const profile = await storage.getProfileByUserId(user.id);
+  if (!profile) {
+    res.status(403).json({ error: "No profile associated with this account" });
+    return null;
+  }
+  return { userId: user.id, profileId: profile.id };
+}
+
+function isPrivateIp(ip: string): boolean {
+  if (net.isIPv4(ip)) {
+    const parts = ip.split('.').map(Number);
+    if (parts[0] === 10) return true;
+    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+    if (parts[0] === 192 && parts[1] === 168) return true;
+    if (parts[0] === 127) return true;
+    if (parts[0] === 0) return true;
+    if (parts[0] === 169 && parts[1] === 254) return true;
+  }
+  if (net.isIPv6(ip)) {
+    const lower = ip.toLowerCase();
+    if (lower === '::1' || lower.startsWith('fe80:') || lower.startsWith('fc') || lower.startsWith('fd')) return true;
+  }
+  return false;
+}
+
+async function validateGatewayUrl(urlString: string): Promise<{ valid: boolean; error?: string }> {
+  try {
+    const parsed = new URL(urlString);
+
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return { valid: false, error: "Only HTTP and HTTPS protocols are allowed" };
+    }
+
+    if (['localhost', '0.0.0.0'].includes(parsed.hostname)) {
+      return { valid: false, error: "Localhost and 0.0.0.0 addresses are not allowed" };
+    }
+
+    if (net.isIP(parsed.hostname)) {
+      if (isPrivateIp(parsed.hostname)) {
+        return { valid: false, error: "Private/internal IP addresses are not allowed" };
+      }
+    } else {
+      try {
+        const addresses = await dns.resolve4(parsed.hostname);
+        for (const addr of addresses) {
+          if (isPrivateIp(addr)) {
+            return { valid: false, error: "Domain resolves to a private/internal IP address" };
+          }
+        }
+      } catch {
+        return { valid: false, error: "Unable to resolve domain name" };
+      }
+    }
+
+    return { valid: true };
+  } catch {
+    return { valid: false, error: "Invalid URL format" };
+  }
+}
+
+async function safeFetchGateway(gatewayUrl: string, path: string, options?: RequestInit): Promise<Response | null> {
+  const validation = await validateGatewayUrl(gatewayUrl);
+  if (!validation.valid) {
+    console.warn(`Blocked gateway fetch to ${gatewayUrl}: ${validation.error}`);
+    return null;
+  }
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const response = await fetch(`${gatewayUrl}${path}`, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    return response;
+  } catch {
+    return null;
+  }
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -183,28 +272,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let assistantResponse: string;
 
       if (settings?.openclawUrl) {
-        try {
-          const openclawResponse = await fetch(
-            `${settings.openclawUrl}/api/chat`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ message: content }),
-            }
-          );
+        const chatResponse = await safeFetchGateway(settings.openclawUrl, '/api/chat', {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: content }),
+        });
 
-          if (openclawResponse.ok) {
-            const data = await openclawResponse.json();
+        if (chatResponse?.ok) {
+          try {
+            const data = await chatResponse.json();
             assistantResponse =
               data.response || data.message || "OpenClaw processed your request.";
-          } else {
-            assistantResponse =
-              "I couldn't connect to your OpenClaw server. Please check your server URL in Settings.";
+          } catch {
+            assistantResponse = "OpenClaw processed your request.";
           }
-        } catch (error) {
-          console.error("OpenClaw connection error:", error);
+        } else if (!chatResponse) {
           assistantResponse =
-            "Unable to reach your OpenClaw server. Make sure it's running and the URL is correct.";
+            "Unable to reach your OpenClaw server. The URL may be invalid or unreachable.";
+        } else {
+          assistantResponse =
+            "I couldn't connect to your OpenClaw server. Please check your server URL in Settings.";
         }
       } else {
         assistantResponse = generateLocalResponse(content);
@@ -254,6 +341,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/settings", async (req, res) => {
     try {
       const { openclawUrl, saveMessagesLocally } = req.body;
+
+      if (openclawUrl && openclawUrl.trim() !== '') {
+        const urlValidation = await validateGatewayUrl(openclawUrl);
+        if (!urlValidation.valid) {
+          return res.status(400).json({ error: `Invalid Gateway URL: ${urlValidation.error}` });
+        }
+      }
+
       const settings = await storage.updateSettings({
         openclawUrl,
         saveMessagesLocally,
@@ -590,23 +685,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let result = "";
 
       if (settings?.openclawUrl) {
-        try {
-          const openclawResponse = await fetch(
-            `${settings.openclawUrl}/api/chat`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ message: `Execute command: ${action.command}. ${action.description}` }),
-            }
-          );
-          if (openclawResponse.ok) {
-            const data = await openclawResponse.json();
+        const actionResponse = await safeFetchGateway(settings.openclawUrl, '/api/chat', {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: `Execute command: ${action.command}. ${action.description}` }),
+        });
+        if (actionResponse?.ok) {
+          try {
+            const data = await actionResponse.json();
             result = data.response || data.message || "Action completed.";
-          } else {
-            result = "Could not connect to OpenClaw server.";
+          } catch {
+            result = "Action completed.";
           }
-        } catch {
-          result = "Unable to reach OpenClaw server.";
+        } else if (!actionResponse) {
+          result = "Unable to reach OpenClaw server. URL may be invalid or unreachable.";
+        } else {
+          result = "Could not connect to OpenClaw server.";
         }
       } else {
         result = `Action "${action.title}" queued. Connect to OpenClaw Gateway in Settings to execute commands.`;
@@ -699,6 +793,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/gateway/status", async (req, res) => {
     try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+
       const settings = await storage.getSettings();
       if (!settings?.openclawUrl) {
         return res.json({
@@ -707,18 +804,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const startTime = Date.now();
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
-        const healthResponse = await fetch(
-          `${settings.openclawUrl}/api/health`,
-          { signal: controller.signal }
-        );
-        clearTimeout(timeout);
-        const latency = Date.now() - startTime;
+      const urlValidation = await validateGatewayUrl(settings.openclawUrl);
+      if (!urlValidation.valid) {
+        return res.json({
+          connected: false,
+          url: settings.openclawUrl,
+          error: `Invalid Gateway URL: ${urlValidation.error}`,
+        });
+      }
 
-        if (healthResponse.ok) {
+      const startTime = Date.now();
+      const healthResponse = await safeFetchGateway(settings.openclawUrl, '/api/health');
+      const latency = Date.now() - startTime;
+
+      if (healthResponse?.ok) {
+        try {
           const data = await healthResponse.json();
           return res.json({
             connected: true,
@@ -726,23 +826,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             url: settings.openclawUrl,
             serverInfo: data,
           });
+        } catch {
+          return res.json({
+            connected: true,
+            latency,
+            url: settings.openclawUrl,
+          });
         }
-
-        return res.json({
-          connected: false,
-          latency,
-          url: settings.openclawUrl,
-          error: `Server returned ${healthResponse.status}`,
-        });
-      } catch (fetchError: any) {
-        const latency = Date.now() - startTime;
-        return res.json({
-          connected: false,
-          latency,
-          url: settings.openclawUrl,
-          error: fetchError.name === "AbortError" ? "Connection timed out" : "Unable to reach server",
-        });
       }
+
+      return res.json({
+        connected: false,
+        latency,
+        url: settings.openclawUrl,
+        error: healthResponse ? `Server returned ${healthResponse.status}` : "Unable to reach server",
+      });
     } catch (error) {
       console.error("Error checking gateway status:", error);
       res.status(500).json({ error: "Failed to check gateway status" });
@@ -765,9 +863,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/agent-thoughts/:profileId", async (req, res) => {
     try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      if (auth.profileId !== req.params.profileId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const sessionId = req.query.sessionId as string | undefined;
       const limit = parseInt(req.query.limit as string) || 50;
-      const thoughts = await storage.getAgentThoughts(req.params.profileId, sessionId, limit);
+      const thoughts = await storage.getAgentThoughts(auth.profileId, sessionId, limit);
       res.json(thoughts);
     } catch (error) {
       console.error("Error fetching agent thoughts:", error);
@@ -777,12 +880,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/agent-thoughts", async (req, res) => {
     try {
-      const { profileId, type, content, metadata, sessionId } = req.body;
-      if (!profileId || !type || !content) {
-        return res.status(400).json({ error: "profileId, type, and content are required" });
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const { type, content, metadata, sessionId } = req.body;
+      if (!type || !content) {
+        return res.status(400).json({ error: "type and content are required" });
       }
       const thought = await storage.createAgentThought({
-        profileId,
+        profileId: auth.profileId,
         type,
         content,
         metadata: metadata ? JSON.stringify(metadata) : null,
@@ -797,8 +902,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/token-costs/:profileId", async (req, res) => {
     try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      if (auth.profileId !== req.params.profileId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const limit = parseInt(req.query.limit as string) || 50;
-      const costs = await storage.getTokenCosts(req.params.profileId, limit);
+      const costs = await storage.getTokenCosts(auth.profileId, limit);
       res.json(costs);
     } catch (error) {
       console.error("Error fetching token costs:", error);
@@ -808,7 +918,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/token-costs/:profileId/summary", async (req, res) => {
     try {
-      const summary = await storage.getTokenCostSummary(req.params.profileId);
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      if (auth.profileId !== req.params.profileId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const summary = await storage.getTokenCostSummary(auth.profileId);
       res.json(summary);
     } catch (error) {
       console.error("Error fetching cost summary:", error);
@@ -818,12 +933,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/token-costs", async (req, res) => {
     try {
-      const { profileId, model, inputTokens, outputTokens, cost, requestType } = req.body;
-      if (!profileId || !model || !cost || !requestType) {
-        return res.status(400).json({ error: "profileId, model, cost, and requestType are required" });
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const { model, inputTokens, outputTokens, cost, requestType } = req.body;
+      if (!model || !cost || !requestType) {
+        return res.status(400).json({ error: "model, cost, and requestType are required" });
       }
       const entry = await storage.createTokenCost({
-        profileId,
+        profileId: auth.profileId,
         model,
         inputTokens: inputTokens || 0,
         outputTokens: outputTokens || 0,
@@ -839,6 +956,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/system-metrics", async (req, res) => {
     try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
       const metrics = await storage.getLatestMetrics();
       res.json(metrics || { cpuPercent: 0, memoryPercent: 0, diskPercent: 0 });
     } catch (error) {
@@ -849,6 +968,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/system-metrics/history", async (req, res) => {
     try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
       const limit = parseInt(req.query.limit as string) || 20;
       const history = await storage.getMetricsHistory(limit);
       res.json(history);
@@ -860,6 +981,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/system-metrics", async (req, res) => {
     try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
       const { cpuPercent, memoryPercent, diskPercent, cpuModel, totalMemoryMb, totalDiskMb, uptime } = req.body;
       const metric = await storage.createMetrics({
         cpuPercent: cpuPercent || 0,
@@ -879,9 +1002,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/memories/:profileId", async (req, res) => {
     try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      if (auth.profileId !== req.params.profileId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const type = req.query.type as string | undefined;
       const limit = parseInt(req.query.limit as string) || 50;
-      const memories = await storage.getMemories(req.params.profileId, type, limit);
+      const memories = await storage.getMemories(auth.profileId, type, limit);
       res.json(memories);
     } catch (error) {
       console.error("Error fetching memories:", error);
@@ -891,12 +1019,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/memories", async (req, res) => {
     try {
-      const { profileId, title, content, memoryType, tags, importance } = req.body;
-      if (!profileId || !title || !content || !memoryType) {
-        return res.status(400).json({ error: "profileId, title, content, and memoryType are required" });
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const { title, content, memoryType, tags, importance } = req.body;
+      if (!title || !content || !memoryType) {
+        return res.status(400).json({ error: "title, content, and memoryType are required" });
       }
       const memory = await storage.createMemory({
-        profileId,
+        profileId: auth.profileId,
         title,
         content,
         memoryType,
@@ -912,11 +1042,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/memories/:id", async (req, res) => {
     try {
-      const { profileId } = req.body;
-      if (!profileId) {
-        return res.status(400).json({ error: "profileId is required" });
-      }
-      await storage.deleteMemory(req.params.id, profileId);
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      await storage.deleteMemory(req.params.id, auth.profileId);
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting memory:", error);
@@ -926,8 +1054,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/emergency-stops/:profileId", async (req, res) => {
     try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      if (auth.profileId !== req.params.profileId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const limit = parseInt(req.query.limit as string) || 20;
-      const stops = await storage.getEmergencyStops(req.params.profileId, limit);
+      const stops = await storage.getEmergencyStops(auth.profileId, limit);
       res.json(stops);
     } catch (error) {
       console.error("Error fetching emergency stops:", error);
@@ -937,48 +1070,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/emergency-stop", async (req, res) => {
     try {
-      const { profileId, reason } = req.body;
-      if (!profileId || !reason) {
-        return res.status(400).json({ error: "profileId and reason are required" });
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const { reason } = req.body;
+      if (!reason) {
+        return res.status(400).json({ error: "reason is required" });
       }
 
       let stoppedProcesses = "All active processes";
       const settings = await storage.getSettings();
       if (settings?.openclawUrl) {
-        try {
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 5000);
-          const stopResponse = await fetch(`${settings.openclawUrl}/api/emergency-stop`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ reason }),
-            signal: controller.signal,
-          });
-          clearTimeout(timeout);
-          if (stopResponse.ok) {
+        const stopResponse = await safeFetchGateway(settings.openclawUrl, '/api/emergency-stop', {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason }),
+        });
+        if (stopResponse?.ok) {
+          try {
             const data = await stopResponse.json();
             stoppedProcesses = data.stoppedProcesses || "All processes stopped via Gateway";
+          } catch {
+            stoppedProcesses = "All processes stopped via Gateway";
           }
-        } catch {
-          stoppedProcesses = "Gateway unreachable - local stop only";
+        } else if (!stopResponse) {
+          stoppedProcesses = "Gateway unreachable or blocked - local stop only";
         }
       }
 
-      const activeSchedules = await storage.getSchedules(profileId);
+      const activeSchedules = await storage.getSchedules(auth.profileId);
       for (const schedule of activeSchedules) {
         if (schedule.isActive) {
-          await storage.updateSchedule(schedule.id, profileId, { isActive: false });
+          await storage.updateSchedule(schedule.id, auth.profileId, { isActive: false });
         }
       }
 
       const stop = await storage.createEmergencyStop({
-        profileId,
+        profileId: auth.profileId,
         reason,
         stoppedProcesses,
         status: "triggered",
       });
 
-      await storage.createActionLog(profileId, "emergency_stop", stop.id, "Emergency Stop Triggered", "completed", reason);
+      await storage.createActionLog(auth.profileId, "emergency_stop", stop.id, "Emergency Stop Triggered", "completed", reason);
 
       res.json(stop);
     } catch (error) {
@@ -989,12 +1122,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/emergency-stop/:id/resolve", async (req, res) => {
     try {
-      const { profileId } = req.body;
-      if (!profileId) {
-        return res.status(400).json({ error: "profileId is required" });
-      }
-      const stop = await storage.resolveEmergencyStop(req.params.id, profileId);
-      await storage.createActionLog(profileId, "emergency_stop", stop.id, "Emergency Stop Resolved", "completed", "Resolved by user");
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const stop = await storage.resolveEmergencyStop(req.params.id, auth.profileId);
+      await storage.createActionLog(auth.profileId, "emergency_stop", stop.id, "Emergency Stop Resolved", "completed", "Resolved by user");
       res.json(stop);
     } catch (error) {
       console.error("Error resolving emergency stop:", error);

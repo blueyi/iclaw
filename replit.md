@@ -72,7 +72,14 @@ Preferred communication style: Simple, everyday language.
 - `POST /api/auth/login` - User login
 - `GET /api/auth/me` - Token validation for biometric login
 
-**OpenClaw Integration**: The server proxies chat messages to a configurable external OpenClaw AI server URL, falling back to a simulated response when unavailable.
+**Security**:
+- All ClawBridge endpoints (agent-thoughts, token-costs, system-metrics, memories, emergency-stops, gateway/status) require Bearer token authentication via `requireAuthWithProfile`
+- Profile-scoped routes enforce IDOR protection — users can only access their own data (profileId verified against authenticated user's profile)
+- SSRF protection via `validateGatewayUrl` and `safeFetchGateway` — blocks private IPs (10.x, 172.16-31.x, 192.168.x, 127.x, link-local), localhost, non-HTTP schemes, and DNS rebinding (resolves domain before fetching)
+- Gateway URL validation applied on settings update and all server-side fetches (chat proxy, health checks, emergency stop)
+- Auth token synced globally via `setAuthToken()` in `client/lib/query-client.ts` — all `getQueryFn` and `apiRequest` calls automatically include the `Authorization: Bearer` header
+
+**OpenClaw Integration**: The server proxies chat messages to a configurable external OpenClaw AI server URL (with SSRF protection), falling back to a simulated response when unavailable.
 
 ### Data Storage
 

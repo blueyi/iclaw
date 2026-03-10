@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
-import { apiRequest, getApiUrl } from '@/lib/query-client';
+import { apiRequest, getApiUrl, setAuthToken } from '@/lib/query-client';
 
 interface AuthUser {
   id: string;
@@ -71,12 +71,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await response.json();
         setUser(data.user);
         setToken(storedToken);
+        setAuthToken(storedToken);
       } else {
         await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+        setAuthToken(null);
       }
     } catch (error) {
       console.error('Error restoring session:', error);
       await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+      setAuthToken(null);
     } finally {
       setIsLoading(false);
     }
@@ -103,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await AsyncStorage.setItem(AUTH_TOKEN_KEY, data.token);
       setUser(data.user);
       setToken(data.token);
+      setAuthToken(data.token);
 
       if (biometricEnabled) {
         try {
@@ -136,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await AsyncStorage.setItem(AUTH_TOKEN_KEY, data.token);
       setUser(data.user);
       setToken(data.token);
+      setAuthToken(data.token);
 
       if (biometricEnabled) {
         try {
@@ -167,6 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await AsyncStorage.removeItem('@iclaw_profile_id');
       setUser(null);
       setToken(null);
+      setAuthToken(null);
     }
   }, [token]);
 
@@ -226,6 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await AsyncStorage.setItem(AUTH_TOKEN_KEY, storedToken);
       setUser(data.user);
       setToken(storedToken);
+      setAuthToken(storedToken);
       return { success: true };
     } catch (error) {
       console.error('Biometric login error:', error);
