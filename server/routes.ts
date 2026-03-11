@@ -2,6 +2,15 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
+import {
+  runCouncilReview,
+  getCouncilHistory,
+  getCouncilLog,
+  getCouncilConfig,
+  updateCouncilConfig,
+  isCouncilRunning,
+  getLastReview,
+} from "./council";
 import bcrypt from "bcryptjs";
 import { URL } from "node:url";
 import * as dns from "node:dns/promises";
@@ -1924,6 +1933,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating heartbeat:", error);
       res.status(500).json({ error: "Failed to create heartbeat schedule" });
+    }
+  });
+
+  // === Council Routes ===
+
+  app.get("/api/council/status", async (req, res) => {
+    try {
+      const auth = await getAuthUser(req);
+      if (!auth) return res.status(401).json({ error: "Authentication required" });
+      res.json({
+        isRunning: isCouncilRunning(),
+        config: getCouncilConfig(),
+        lastReview: getLastReview(),
+        totalReviews: getCouncilHistory().length,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get council status" });
+    }
+  });
+
+  app.get("/api/council/history", async (req, res) => {
+    try {
+      const auth = await getAuthUser(req);
+      if (!auth) return res.status(401).json({ error: "Authentication required" });
+      res.json(getCouncilHistory());
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get council history" });
+    }
+  });
+
+  app.get("/api/council/log", async (req, res) => {
+    try {
+      const auth = await getAuthUser(req);
+      if (!auth) return res.status(401).json({ error: "Authentication required" });
+      res.json(getCouncilLog());
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get council log" });
+    }
+  });
+
+  app.post("/api/council/run", async (req, res) => {
+    try {
+      const auth = await getAuthUser(req);
+      if (!auth) return res.status(401).json({ error: "Authentication required" });
+      if (isCouncilRunning()) {
+        return res.status(409).json({ error: "A review is already in progress" });
+      }
+      const settings = await storage.getSettings();
+      const gatewayUrl = settings?.openclawUrl || undefined;
+      const review = await runCouncilReview(gatewayUrl);
+      res.json(review);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to run council review" });
+    }
+  });
+
+  app.put("/api/council/config", async (req, res) => {
+    try {
+      const auth = await getAuthUser(req);
+      if (!auth) return res.status(401).json({ error: "Authentication required" });
+      const { enabled, intervalHours, useGateway } = req.body;
+      const updated = updateCouncilConfig({
+        ...(enabled !== undefined && { enabled }),
+        ...(intervalHours !== undefined && { intervalHours }),
+        ...(useGateway !== undefined && { useGateway }),
+      });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update council config" });
     }
   });
 

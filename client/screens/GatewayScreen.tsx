@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -51,6 +51,19 @@ export default function GatewayScreen() {
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
   const [batteryLevel, setBatteryLevel] = useState<number | null>(null);
   const [networkType, setNetworkType] = useState<string>('Unknown');
+
+  const councilTapCount = useRef(0);
+  const councilTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleCouncilTap = useCallback(() => {
+    councilTapCount.current += 1;
+    if (councilTapTimer.current) clearTimeout(councilTapTimer.current);
+    councilTapTimer.current = setTimeout(() => { councilTapCount.current = 0; }, 3000);
+    if (councilTapCount.current >= 7) {
+      councilTapCount.current = 0;
+      if (councilTapTimer.current) clearTimeout(councilTapTimer.current);
+      navigation.navigate('Council');
+    }
+  }, [navigation]);
 
   const { data: settings } = useQuery<SettingsData>({
     queryKey: ['/api/settings'],
@@ -381,9 +394,11 @@ export default function GatewayScreen() {
         </Pressable>
       </View>
 
-      <Text style={[styles.bridgeSectionTitle, { color: theme.textSecondary }]}>
-        ClawBridge
-      </Text>
+      <Pressable onPress={handleCouncilTap} hitSlop={12}>
+        <Text style={[styles.bridgeSectionTitle, { color: theme.textSecondary }]}>
+          ClawBridge
+        </Text>
+      </Pressable>
 
       <Text style={[styles.bridgeSubSectionTitle, { color: theme.textTertiary }]}>
         Agent Identity

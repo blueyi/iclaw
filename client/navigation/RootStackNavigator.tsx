@@ -17,6 +17,7 @@ import SkillsBrowserScreen from "@/screens/SkillsBrowserScreen";
 import NodePairingScreen from "@/screens/NodePairingScreen";
 import SoulEditorScreen from "@/screens/SoulEditorScreen";
 import SpendingLimitsScreen from "@/screens/SpendingLimitsScreen";
+import CouncilScreen from "@/screens/CouncilScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { HeaderTitle } from "@/components/HeaderTitle";
 
@@ -37,6 +38,7 @@ export type RootStackParamList = {
   NodePairing: undefined;
   SoulEditor: undefined;
   SpendingLimits: undefined;
+  Council: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -168,6 +170,17 @@ export default function RootStackNavigator() {
         options={{
           headerTitle: "Spending Limits",
           headerBackTitle: "Back",
+        }}
+      />
+      <Stack.Screen
+        name="Council"
+        component={CouncilScreen}
+        options={{
+          headerTitle: "Council Room",
+          headerBackTitle: "Back",
+          headerStyle: { backgroundColor: "#0a0a0a" },
+          headerTintColor: "#9b5cff",
+          headerTitleStyle: { color: "#fff", fontWeight: "700" },
         }}
       />
     </Stack.Navigator>
