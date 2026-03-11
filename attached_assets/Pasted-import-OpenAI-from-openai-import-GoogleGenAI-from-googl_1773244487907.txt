@@ -1,0 +1,1030 @@
+import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
+import * as fs from "fs";
+import * as path from "path";
+import { db } from "./db";
+import { paperTrades } from "@shared/schema";
+import { desc, sql, gte } from "drizzle-orm";
+
+const HISTORY_FILE = path.join("data", "council-review-history.json");
+
+const openai = new OpenAI({
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+});
+
+const gemini = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY!,
+  httpOptions: {
+    apiVersion: "",
+    baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL!,
+  },
+});
+
+const openrouter = new OpenAI({
+  apiKey: process.env.AI_INTEGRATIONS_OPENROUTER_API_KEY,
+  baseURL: process.env.AI_INTEGRATIONS_OPENROUTER_BASE_URL,
+});
+
+export interface CouncilReviewEntry {
+  id: string;
+  timestamp: string;
+  member: string;
+  model: string;
+  score: number;
+  summary: string;
+  strengths: string[];
+  optimizations: string[];
+  applied: string[];
+  status: "success" | "error";
+}
+
+export interface DailyReviewResult {
+  id: string;
+  timestamp: string;
+  reviews: CouncilReviewEntry[];
+  averageScore: number;
+  totalOptimizations: number;
+  totalApplied: number;
+  systemSnapshot: Record<string, any>;
+}
+
+export interface PendingOptimization {
+  id: string;
+  sessionId: string;
+  timestamp: string;
+  priority: number;
+  title: string;
+  description: string;
+  suggestedBy: string[];
+  category: string;
+  status: "pending" | "approved" | "denied";
+  approvedAt?: string;
+}
+
+export interface CouncilCronConfig {
+  enabled: boolean;
+  intervalMs: number;
+}
+
+interface CouncilLogEntry {
+  id: string;
+  timestamp: string;
+  type: "review" | "optimization" | "applied" | "error" | "info" | "consolidation";
+  message: string;
+  member?: string;
+  score?: number;
+}
+
+const defaultConfig: CouncilCronConfig = {
+  enabled: true,
+  intervalMs: 24 * 60 * 60 * 1000,
+};
+
+let config: CouncilCronConfig = { ...defaultConfig };
+let cronLog: CouncilLogEntry[] = [];
+let intervalId: ReturnType<typeof setInterval> | null = null;
+let isRunning = false;
+let lastRunTime: string | null = null;
+let cycleCount = 0;
+let reviewHistory: DailyReviewResult[] = [];
+let pendingOptimizations: PendingOptimization[] = [];
+
+function loadHistory() {
+  try {
+    if (fs.existsSync(HISTORY_FILE)) {
+      const data = JSON.parse(fs.readFileSync(HISTORY_FILE, "utf8"));
+      reviewHistory = data.reviews || [];
+      cycleCount = data.cycleCount || 0;
+      lastRunTime = data.lastRunTime || null;
+      pendingOptimizations = data.pendingOptimizations || [];
+      console.log(`[COUNCIL] Loaded ${reviewHistory.length} review(s) from disk`);
+    }
+  } catch (err) {
+    console.log("[COUNCIL] No previous review history found");
+  }
+}
+
+function saveHistory() {
+  try {
+    const dir = path.dirname(HISTORY_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const trimmed = reviewHistory.slice(0, 30).map(r => ({
+      ...r,
+      systemSnapshot: {},
+    }));
+    fs.writeFileSync(HISTORY_FILE, JSON.stringify({
+      reviews: trimmed,
+      cycleCount,
+      lastRunTime,
+      pendingOptimizations,
+    }, null, 2));
+  } catch (err: any) {
+    console.log(`[COUNCIL] Failed to save history: ${err.message}`);
+  }
+}
+
+loadHistory();
+
+function log(type: CouncilLogEntry["type"], message: string, extra?: Partial<CouncilLogEntry>) {
+  const entry: CouncilLogEntry = {
+    id: `council-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    timestamp: new Date().toISOString(),
+    type,
+    message,
+    ...extra,
+  };
+  cronLog.unshift(entry);
+  if (cronLog.length > 500) cronLog = cronLog.slice(0, 500);
+  console.log(`[COUNCIL] ${type.toUpperCase()}: ${message}`);
+  return entry;
+}
+
+async function gatherSystemSnapshot(): Promise<Record<string, any>> {
+  const snapshot: Record<string, any> = {
+    timestamp: new Date().toISOString(),
+    project: "Solana Token Quant Dataset Builder",
+  };
+
+  try {
+    const sevenDayAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+    const oneDayAgo = new Date(Date.now() - 24 * 3600 * 1000);
+
+    const allTrades = await db.execute(sql`SELECT * FROM paper_trades ORDER BY entry_at DESC LIMIT 1000`);
+    const trades: any[] = allTrades.rows || allTrades;
+    const closed = trades.filter(t => t.status === "closed");
+    const open = trades.filter(t => t.status === "open");
+    const wins = closed.filter(t => parseFloat(t.pnl_sol || "0") > 0);
+    const totalPnl = closed.reduce((s: number, t: any) => s + parseFloat(t.pnl_sol || "0"), 0);
+
+    const recentClosed = closed.filter(t => t.closed_at && new Date(t.closed_at) > oneDayAgo);
+    const recentWins = recentClosed.filter(t => parseFloat(t.pnl_sol || "0") > 0);
+    const recentPnl = recentClosed.reduce((s: number, t: any) => s + parseFloat(t.pnl_sol || "0"), 0);
+
+    const weekClosed = closed.filter(t => t.closed_at && new Date(t.closed_at) > sevenDayAgo);
+    const weekWins = weekClosed.filter(t => parseFloat(t.pnl_sol || "0") > 0);
+    const weekPnl = weekClosed.reduce((s: number, t: any) => s + parseFloat(t.pnl_sol || "0"), 0);
+
+    const bySource: Record<string, { trades: number; wins: number; pnl: number }> = {};
+    closed.forEach((t: any) => {
+      const s = t.source || "unknown";
+      if (!bySource[s]) bySource[s] = { trades: 0, wins: 0, pnl: 0 };
+      bySource[s].trades++;
+      if (parseFloat(t.pnl_sol || "0") > 0) bySource[s].wins++;
+      bySource[s].pnl += parseFloat(t.pnl_sol || "0");
+    });
+
+    const byExitReason: Record<string, { count: number; pnl: number }> = {};
+    closed.forEach((t: any) => {
+      const reason = (t.close_reason || "unknown").replace(/ \[LOSS CAPPED.*\]/, "").replace(/TAKE_PROFIT_\d+PCT/, "TAKE_PROFIT");
+      if (!byExitReason[reason]) byExitReason[reason] = { count: 0, pnl: 0 };
+      byExitReason[reason].count++;
+      byExitReason[reason].pnl += parseFloat(t.pnl_sol || "0");
+    });
+
+    snapshot.portfolio = {
+      startingCapital: "100 SOL",
+      totalTrades: trades.length,
+      closedTrades: closed.length,
+      openPositions: open.length,
+      overallWinRate: closed.length ? `${(wins.length / closed.length * 100).toFixed(1)}%` : "N/A",
+      totalPnL: `${totalPnl.toFixed(4)} SOL`,
+      avgPnlPerTrade: closed.length ? `${(totalPnl / closed.length).toFixed(4)} SOL` : "N/A",
+    };
+
+    snapshot.last24h = {
+      trades: recentClosed.length,
+      wins: recentWins.length,
+      winRate: recentClosed.length ? `${(recentWins.length / recentClosed.length * 100).toFixed(1)}%` : "N/A",
+      pnl: `${recentPnl.toFixed(4)} SOL`,
+    };
+
+    snapshot.last7d = {
+      trades: weekClosed.length,
+      wins: weekWins.length,
+      winRate: weekClosed.length ? `${(weekWins.length / weekClosed.length * 100).toFixed(1)}%` : "N/A",
+      pnl: `${weekPnl.toFixed(4)} SOL`,
+    };
+
+    snapshot.performanceBySource = Object.entries(bySource).map(([src, v]) => ({
+      source: src,
+      trades: v.trades,
+      winRate: `${(v.wins / v.trades * 100).toFixed(0)}%`,
+      pnl: `${v.pnl.toFixed(3)} SOL`,
+    }));
+
+    snapshot.exitReasons = Object.entries(byExitReason)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 15)
+      .map(([reason, v]) => ({
+        reason,
+        count: v.count,
+        pnl: `${v.pnl.toFixed(3)} SOL`,
+      }));
+
+    snapshot.recentTrades = recentClosed.slice(0, 20).map((t: any) => ({
+      symbol: t.symbol,
+      source: t.source,
+      pnl: `${parseFloat(t.pnl_sol || "0").toFixed(4)} SOL`,
+      pct: `${(parseFloat(t.pnl_pct || "0") * 100).toFixed(1)}%`,
+      exitReason: t.close_reason,
+    }));
+
+    snapshot.openPositions = open.map((t: any) => ({
+      symbol: t.symbol,
+      source: t.source,
+      size: `${parseFloat(t.entry_size_sol || "0").toFixed(2)} SOL`,
+      entryPrice: t.entry_price,
+    }));
+
+  } catch (err: any) {
+    snapshot.tradeDataError = err.message;
+  }
+
+  try {
+    const edgeRes = await db.execute(sql`SELECT * FROM edge_registry ORDER BY expectancy DESC LIMIT 10`);
+    const edges: any[] = edgeRes.rows || edgeRes;
+    if (edges.length > 0) {
+      snapshot.edgeRegistry = edges.map((e: any) => ({
+        token: e.token_symbol || e.mint?.slice(0, 8),
+        regime: e.regime,
+        pattern: e.pattern,
+        winRate: e.win_rate,
+        edge: e.edge,
+        expectancy: e.expectancy,
+        status: e.status,
+      }));
+    }
+  } catch {
+    snapshot.edgeRegistry = "table not available";
+  }
+
+  try {
+    const jobRes = await db.execute(sql`SELECT COUNT(*) as total, COUNT(CASE WHEN status='completed' THEN 1 END) as completed FROM jobs`);
+    const jobRow: any = (jobRes.rows || jobRes)[0];
+    snapshot.dataCollection = {
+      totalJobs: jobRow?.total || 0,
+      completedJobs: jobRow?.completed || 0,
+    };
+  } catch {
+    snapshot.dataCollection = "unavailable";
+  }
+
+  snapshot.systemArchitecture = {
+    predictionEngine: "TRIDENT-1 (3-specialist ensemble: GBDT + LSTM + GPT)",
+    exitSystem: "4-layer TPE (hard rails, harvest engine, runner engine, policy brain)",
+    rugShield: "Multi-layer (velocity detection, peak drain, liquidity monitoring, rug intel DB)",
+    counselSystems: "15 production modules (TDA Regime, Causal Engine, Exit Architecture, Adversarial Sim, Token Intelligence, etc.)",
+    tokenDiscovery: "BOUNCEHOUSE (DexScreener trending), RABBY (momentum runners), DINU (daily picks), GEMS (ultra-wide small-cap scan)",
+    bridge: "Cross-site data sharing with CryptoTrack AI via Bridge V2",
+    autonomousLoop: "24/7 scanning every hour, predictions every 15min, labeler every 30min, calibration every 2h",
+  };
+
+  snapshot.marketRegime = "CHAOS (detected across most tokens — regime blocks active trading on core tokens)";
+
+  return snapshot;
+}
+
+function buildReviewPrompt(snapshot: Record<string, any>, customInstructions?: string): string {
+  const customBlock = customInstructions
+    ? `\n\nOPERATOR SPECIAL INSTRUCTIONS:\n${customInstructions}\n`
+    : "";
+
+  return `You are a member of the AI Council reviewing an autonomous Solana quantitative trading system. This is a daily operational review.
+
+SYSTEM SNAPSHOT:
+${JSON.stringify(snapshot, null, 2)}
+${customBlock}
+Analyze the system's performance, identify issues, and suggest specific optimizations. Focus on:
+1. Overall trading performance — is the system profitable? What's the win rate trend?
+2. Source performance — which discovery sources (BOUNCEHOUSE, RABBY, GEMS, DINU) are working and which aren't?
+3. Exit strategy effectiveness — are exits leaving money on the table or catching rugs early enough?
+4. Regime detection — is the CHAOS regime blocking too many trades? Should parameters adapt?
+5. Risk management — are position sizes appropriate? Is drawdown controlled?
+6. What specific, actionable optimizations would improve outcomes?
+
+You MUST respond with ONLY valid JSON:
+{
+  "score": <1-10 overall system health>,
+  "summary": "<2-3 sentence executive summary>",
+  "strengths": ["what's working well"],
+  "optimizations": ["specific actionable optimization 1", "specific optimization 2"],
+  "autoApply": ["safe config changes that can be auto-applied, format: 'ACTION: details'"]
+}
+
+For autoApply, only suggest SAFE changes you're confident will help. Be specific about numbers, thresholds, and parameters.`;
+}
+
+interface AIReviewResponse {
+  score: number;
+  summary: string;
+  strengths: string[];
+  optimizations: string[];
+  autoApply: string[];
+}
+
+function parseReviewResponse(text: string): AIReviewResponse {
+  try {
+    const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON found");
+    let jsonStr = jsonMatch[0];
+    jsonStr = jsonStr.replace(/,\s*([}\]])/g, "$1");
+    const parsed = JSON.parse(jsonStr);
+    return {
+      score: parsed.score || 5,
+      summary: parsed.summary || "",
+      strengths: parsed.strengths || [],
+      optimizations: parsed.optimizations || [],
+      autoApply: parsed.autoApply || [],
+    };
+  } catch {
+    return { score: 0, summary: "Failed to parse review", strengths: [], optimizations: [], autoApply: [] };
+  }
+}
+
+async function reviewWithNeo(prompt: string): Promise<AIReviewResponse> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 4000,
+      temperature: 0.3,
+      response_format: { type: "json_object" },
+    });
+    return parseReviewResponse(response.choices[0]?.message?.content || "{}");
+  } catch (err: any) {
+    log("error", `Neo (GPT-4o) failed: ${err.message}`, { member: "Neo" });
+    return { score: 0, summary: `Error: ${err.message}`, strengths: [], optimizations: [], autoApply: [] };
+  }
+}
+
+async function reviewWithMorpheus(prompt: string): Promise<AIReviewResponse> {
+  try {
+    const response = await gemini.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{ role: "user", parts: [{ text: prompt + '\n\nYou MUST respond with ONLY a valid JSON object (no markdown, no explanation). The JSON must have these exact keys: "score" (number 1-10), "summary" (string), "strengths" (array of strings), "optimizations" (array of strings).' }] }],
+      config: { temperature: 0.3, maxOutputTokens: 4000 },
+    });
+    let rawText = "";
+    try {
+      rawText = response.text || "";
+    } catch {
+      const candidates = (response as any).candidates;
+      if (candidates?.[0]?.content?.parts?.[0]?.text) {
+        rawText = candidates[0].content.parts[0].text;
+      }
+    }
+    if (!rawText) {
+      log("error", "Morpheus (Gemini) returned empty response", { member: "Morpheus", response: JSON.stringify(response).slice(0, 500) });
+      return { score: 0, summary: "Empty response from Gemini", strengths: [], optimizations: [], autoApply: [] };
+    }
+    log("info", `Morpheus raw response (${rawText.length} chars): ${rawText.slice(0, 200)}...`, { member: "Morpheus" });
+    return parseReviewResponse(rawText);
+  } catch (err: any) {
+    log("error", `Morpheus (Gemini) failed: ${err.message}`, { member: "Morpheus" });
+    return { score: 0, summary: `Error: ${err.message}`, strengths: [], optimizations: [], autoApply: [] };
+  }
+}
+
+async function reviewWithMerovingian(prompt: string): Promise<AIReviewResponse> {
+  try {
+    const response = await openrouter.chat.completions.create({
+      model: "deepseek/deepseek-chat-v3-0324",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 4000,
+      temperature: 0.3,
+    });
+    return parseReviewResponse(response.choices[0]?.message?.content || "{}");
+  } catch (err: any) {
+    log("error", `The Merovingian (DeepSeek) failed: ${err.message}`, { member: "The Merovingian" });
+    return { score: 0, summary: `Error: ${err.message}`, strengths: [], optimizations: [], autoApply: [] };
+  }
+}
+
+async function reviewWithNiobe(prompt: string): Promise<AIReviewResponse> {
+  try {
+    const response = await openrouter.chat.completions.create({
+      model: "meta-llama/llama-3.3-70b-instruct",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 4000,
+      temperature: 0.3,
+    });
+    return parseReviewResponse(response.choices[0]?.message?.content || "{}");
+  } catch (err: any) {
+    log("error", `Niobe (Llama 3.3) failed: ${err.message}`, { member: "Niobe" });
+    return { score: 0, summary: `Error: ${err.message}`, strengths: [], optimizations: [], autoApply: [] };
+  }
+}
+
+interface ConsolidatedOptimization {
+  priority: number;
+  title: string;
+  description: string;
+  suggestedBy: string[];
+  category: string;
+}
+
+async function consolidateOptimizations(reviews: CouncilReviewEntry[], sessionId: string): Promise<PendingOptimization[]> {
+  const allOpts: { member: string; optimization: string }[] = [];
+  for (const review of reviews) {
+    if (review.status !== "success") continue;
+    for (const opt of review.optimizations) {
+      allOpts.push({ member: review.member, optimization: opt });
+    }
+  }
+  if (allOpts.length === 0) return [];
+
+  const consolidationPrompt = `You are the council moderator. All 4 council members have reviewed an autonomous Solana quantitative trading system and suggested optimizations. Your job is to consolidate and rank the TOP 10-15 most critical and impactful optimizations.
+
+ALL MEMBER SUGGESTIONS:
+${allOpts.map((o, i) => `${i + 1}. [${o.member}] ${o.optimization}`).join("\n")}
+
+Rules:
+- Merge duplicate/similar suggestions and credit all members who suggested them
+- Rank by impact (highest impact = priority 1)
+- Keep exactly 10-15 items
+- Each item needs a short title and description
+- Categorize each: "trading", "risk_management", "exits", "discovery", "regime", "infrastructure", "data", "strategy"
+
+Respond with valid JSON in this exact format:
+{
+  "optimizations": [
+    {
+      "priority": 1,
+      "title": "Short action title",
+      "description": "Detailed explanation of what to do and why",
+      "suggestedBy": ["Neo", "Morpheus"],
+      "category": "trading"
+    }
+  ]
+}
+You MUST include 10-15 items in the optimizations array. Each must have all fields filled in with real content.`;
+
+  log("consolidation", `Consolidating ${allOpts.length} optimization(s) from ${reviews.filter(r => r.status === "success").length} council members...`);
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: consolidationPrompt }],
+      max_tokens: 4000,
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+    });
+    const text = response.choices[0]?.message?.content || "[]";
+    let parsed: ConsolidatedOptimization[];
+    try {
+      const data = JSON.parse(text);
+      if (Array.isArray(data)) {
+        parsed = data;
+      } else {
+        const firstArrayKey = Object.keys(data).find(k => Array.isArray(data[k]));
+        if (firstArrayKey) {
+          parsed = data[firstArrayKey];
+        } else {
+          parsed = [data];
+        }
+      }
+    } catch (e: any) {
+      log("error", `Failed to parse consolidation response: ${e.message}`);
+      return [];
+    }
+
+    const pending: PendingOptimization[] = parsed.slice(0, 15).map((opt, idx) => ({
+      id: `opt-${Date.now()}-${idx}`,
+      sessionId,
+      timestamp: new Date().toISOString(),
+      priority: opt.priority || idx + 1,
+      title: opt.title || `Optimization ${idx + 1}`,
+      description: opt.description || "",
+      suggestedBy: opt.suggestedBy || [],
+      category: opt.category || "strategy",
+      status: "pending" as const,
+    }));
+
+    log("consolidation", `Consolidated into ${pending.length} top optimizations for operator approval`);
+    return pending;
+  } catch (err: any) {
+    log("error", `Consolidation failed: ${err.message}`);
+    const fallback: PendingOptimization[] = allOpts.slice(0, 15).map((o, idx) => ({
+      id: `opt-${Date.now()}-${idx}`,
+      sessionId,
+      timestamp: new Date().toISOString(),
+      priority: idx + 1,
+      title: o.optimization.slice(0, 80),
+      description: o.optimization,
+      suggestedBy: [o.member],
+      category: "strategy",
+      status: "pending" as const,
+    }));
+    return fallback;
+  }
+}
+
+export async function runConsolidationOnly(): Promise<PendingOptimization[]> {
+  if (!reviewHistory.length) {
+    log("error", "No existing review to consolidate from");
+    return [];
+  }
+  const latest = reviewHistory[0];
+  log("consolidation", `Running consolidation on existing session ${latest.id} with ${latest.reviews.length} member reviews`);
+  const result = await consolidateOptimizations(latest.reviews, latest.id);
+  pendingOptimizations = result;
+  saveHistory();
+  return result;
+}
+
+export async function runCouncilReview(customInstructions?: string): Promise<DailyReviewResult> {
+  if (isRunning) {
+    log("info", "Council review already running, skipping");
+    return reviewHistory[0] || { id: "", timestamp: "", reviews: [], averageScore: 0, totalOptimizations: 0, totalApplied: 0, systemSnapshot: {} };
+  }
+
+  isRunning = true;
+  cycleCount++;
+  log("info", `Council review session #${cycleCount} convening...${customInstructions ? " (with operator instructions)" : ""}`);
+
+  const snapshot = await gatherSystemSnapshot();
+  const prompt = buildReviewPrompt(snapshot, customInstructions);
+
+  const members = [
+    { name: "Neo", model: "GPT-4o", fn: reviewWithNeo },
+    { name: "Morpheus", model: "Gemini 2.5 Flash", fn: reviewWithMorpheus },
+    { name: "The Merovingian", model: "DeepSeek V3", fn: reviewWithMerovingian },
+    { name: "Niobe", model: "Llama 3.3 70B", fn: reviewWithNiobe },
+  ];
+
+  log("info", "Sending system snapshot to all 4 council members in parallel...");
+
+  const results = await Promise.allSettled(
+    members.map(async (member) => {
+      log("review", `${member.name} (${member.model}) reviewing...`, { member: member.name });
+      const review = await member.fn(prompt);
+      return { member, review };
+    })
+  );
+
+  const reviews: CouncilReviewEntry[] = [];
+  let totalOptimizations = 0;
+
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      const { member, review } = result.value;
+      const entry: CouncilReviewEntry = {
+        id: `review-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: new Date().toISOString(),
+        member: member.name,
+        model: member.model,
+        score: review.score,
+        summary: review.summary,
+        strengths: review.strengths,
+        optimizations: review.optimizations,
+        applied: [],
+        status: review.score > 0 ? "success" : "error",
+      };
+      reviews.push(entry);
+      totalOptimizations += review.optimizations.length;
+
+      if (review.score > 0) {
+        log("review", `${member.name}: ${review.score}/10 — ${review.summary}`, { member: member.name, score: review.score });
+        for (const opt of review.optimizations) {
+          log("optimization", `[${member.name}] ${opt}`, { member: member.name });
+        }
+      }
+    } else {
+      log("error", `Council member failed: ${result.reason}`, {});
+    }
+  }
+
+  const successfulReviews = reviews.filter(r => r.score > 0);
+  const averageScore = successfulReviews.length > 0
+    ? Math.round((successfulReviews.reduce((s, r) => s + r.score, 0) / successfulReviews.length) * 10) / 10
+    : 0;
+
+  const sessionId = `daily-${Date.now()}`;
+  const consolidated = await consolidateOptimizations(reviews, sessionId);
+  pendingOptimizations = consolidated;
+
+  const reviewResult: DailyReviewResult = {
+    id: sessionId,
+    timestamp: new Date().toISOString(),
+    reviews,
+    averageScore,
+    totalOptimizations,
+    totalApplied: 0,
+    systemSnapshot: snapshot,
+  };
+
+  reviewHistory.unshift(reviewResult);
+  if (reviewHistory.length > 30) reviewHistory = reviewHistory.slice(0, 30);
+
+  log("info", `Council session #${cycleCount} complete. Score: ${averageScore}/10 | ${successfulReviews.length}/4 members responded | ${totalOptimizations} optimization(s) suggested`);
+  lastRunTime = new Date().toISOString();
+  isRunning = false;
+  saveHistory();
+
+  return reviewResult;
+}
+
+export function startCouncilCron() {
+  if (intervalId) { console.log("[COUNCIL] Already running"); return; }
+  config.enabled = true;
+  log("info", `Council review cron started — reviewing every ${Math.round(config.intervalMs / 3600000)}h`);
+
+  const timeSinceLast = lastRunTime ? Date.now() - new Date(lastRunTime).getTime() : Infinity;
+  if (timeSinceLast >= config.intervalMs) {
+    const delay = 5 * 60 * 1000;
+    log("info", `Scheduling initial review in ${Math.round(delay / 60000)} minutes`);
+    setTimeout(() => {
+      runCouncilReview().catch(err => log("error", `Review error: ${err.message}`));
+    }, delay);
+  } else {
+    const nextIn = Math.max(0, config.intervalMs - timeSinceLast);
+    log("info", `Last review was ${Math.round(timeSinceLast / 3600000)}h ago, next in ${Math.round(nextIn / 3600000)}h`);
+  }
+
+  intervalId = setInterval(() => {
+    runCouncilReview().catch(err => log("error", `Review error: ${err.message}`));
+  }, config.intervalMs);
+}
+
+export function stopCouncilCron() {
+  if (intervalId) {
+    clearInterval(intervalId);
+    intervalId = null;
+    config.enabled = false;
+    log("info", "Council review cron stopped");
+  }
+}
+
+export function getCouncilCronStatus() {
+  return {
+    enabled: !!intervalId,
+    isRunning,
+    lastRunTime,
+    cycleCount,
+    config,
+    totalReviews: reviewHistory.length,
+    lastScore: reviewHistory[0]?.averageScore || null,
+    nextRunIn: intervalId && lastRunTime
+      ? Math.max(0, config.intervalMs - (Date.now() - new Date(lastRunTime).getTime()))
+      : null,
+    pendingOptimizations: pendingOptimizations.filter(o => o.status === "pending").length,
+  };
+}
+
+export function getCouncilCronLog(limit = 50): CouncilLogEntry[] {
+  return cronLog.slice(0, limit);
+}
+
+export function getReviewHistory(limit = 10): DailyReviewResult[] {
+  return reviewHistory.slice(0, limit);
+}
+
+export function getPendingOptimizations(): PendingOptimization[] {
+  return pendingOptimizations;
+}
+
+export function approveOptimizations(ids: string[]): PendingOptimization[] {
+  const now = new Date().toISOString();
+  for (const opt of pendingOptimizations) {
+    if (ids.includes(opt.id)) {
+      opt.status = "approved";
+      opt.approvedAt = now;
+      log("applied", `Operator approved: ${opt.title}`, {});
+    }
+  }
+  saveHistory();
+  return pendingOptimizations;
+}
+
+export function denyOptimizations(ids: string[]): PendingOptimization[] {
+  for (const opt of pendingOptimizations) {
+    if (ids.includes(opt.id)) {
+      opt.status = "denied";
+      log("info", `Operator denied: ${opt.title}`, {});
+    }
+  }
+  saveHistory();
+  return pendingOptimizations;
+}
+
+export function approveAllOptimizations(): PendingOptimization[] {
+  const now = new Date().toISOString();
+  for (const opt of pendingOptimizations) {
+    if (opt.status === "pending") {
+      opt.status = "approved";
+      opt.approvedAt = now;
+    }
+  }
+  log("applied", `Operator approved all ${pendingOptimizations.length} optimizations`);
+  saveHistory();
+  return pendingOptimizations;
+}
+
+export interface ImplementationProposal {
+  member: string;
+  model: string;
+  approach: string;
+  implementation: string;
+  parameters: Record<string, any>;
+  expectedImpact: string;
+  risks: string;
+  confidence: number;
+}
+
+export interface DebateResult {
+  theme: string;
+  proposals: ImplementationProposal[];
+  winner: {
+    member: string;
+    approach: string;
+    implementation: string;
+    parameters: Record<string, any>;
+    votes: number;
+    reasoning: string;
+  };
+  votingBreakdown: Array<{ voter: string; votedFor: string; reason: string }>;
+}
+
+export interface ImplementationDebateSession {
+  id: string;
+  timestamp: string;
+  themes: string[];
+  debates: DebateResult[];
+  status: "running" | "complete" | "error";
+}
+
+let lastDebateSession: ImplementationDebateSession | null = null;
+
+export function getLastDebateSession(): ImplementationDebateSession | null {
+  return lastDebateSession;
+}
+
+export async function runImplementationDebate(themes: string[]): Promise<ImplementationDebateSession> {
+  const sessionId = `debate-${Date.now()}`;
+  log("info", `Implementation Debate starting: ${themes.length} themes to debate`);
+
+  const session: ImplementationDebateSession = {
+    id: sessionId,
+    timestamp: new Date().toISOString(),
+    themes,
+    debates: [],
+    status: "running",
+  };
+  lastDebateSession = session;
+
+  for (const theme of themes) {
+    log("info", `Debating: "${theme}"`);
+
+    const proposalPrompt = buildProposalPrompt(theme);
+
+    const [neoProposal, morpheusProposal, merovingianProposal, niobeProposal] = await Promise.allSettled([
+      getProposal("Neo", "GPT-4o", proposalPrompt, getProposalFromNeo),
+      getProposal("Morpheus", "Gemini 2.5 Flash", proposalPrompt, getProposalFromMorpheus),
+      getProposal("The Merovingian", "DeepSeek V3", proposalPrompt, getProposalFromMerovingian),
+      getProposal("Niobe", "Llama 3.3 70B", proposalPrompt, getProposalFromNiobe),
+    ]);
+
+    const proposals: ImplementationProposal[] = [];
+    for (const result of [neoProposal, morpheusProposal, merovingianProposal, niobeProposal]) {
+      if (result.status === "fulfilled" && result.value) {
+        proposals.push(result.value);
+        log("info", `  ${result.value.member}: "${result.value.approach}" (confidence: ${result.value.confidence}/10)`);
+      }
+    }
+
+    if (proposals.length < 2) {
+      log("error", `Only ${proposals.length} proposals for "${theme}", skipping vote`);
+      continue;
+    }
+
+    const voteResult = await runVoting(theme, proposals);
+    if (voteResult) {
+      session.debates.push(voteResult);
+      log("info", `  WINNER: ${voteResult.winner.member}'s approach — "${voteResult.winner.approach}" (${voteResult.winner.votes} votes)`);
+    }
+  }
+
+  session.status = "complete";
+  lastDebateSession = session;
+  saveDebateSession(session);
+  log("info", `Implementation Debate complete: ${session.debates.length}/${themes.length} themes resolved`);
+  return session;
+}
+
+function buildProposalPrompt(theme: string): string {
+  return `You are a council member for an autonomous Solana quantitative trading system. The council has identified a recurring optimization theme that needs implementation.
+
+THEME TO IMPLEMENT: "${theme}"
+
+CURRENT SYSTEM CONTEXT:
+- Paper trading engine with ~650+ trades, 36.5% win rate, -7.67 SOL total PnL
+- Sources: BOUNCEHOUSE (breakout scanner), RABBY (runner detection), GEMS (ultra-wide scan), DINU (diamond hands)
+- Exit reasons: TAKE_PROFIT (+105 SOL), EMERGENCY_GAP_DOWN (-58 SOL), RUG_SHIELD_VELOCITY (-23 SOL), TIME_DECAY_2H (-5.7 SOL)
+- CHAOS regime currently blocks ALL trades during high volatility
+- Position sizing: Kelly criterion with adaptive sizing (1.5-3.5 SOL per trade)
+- 15 counsel modules active: regime intelligence, causal engine, exit architecture, adversarial sim, token intelligence
+
+Propose your SPECIFIC implementation. You MUST respond with ONLY valid JSON:
+{
+  "approach": "Short name for your approach (5-10 words)",
+  "implementation": "Detailed step-by-step implementation. Include exact parameter values, thresholds, code logic changes. Be extremely specific — another engineer should be able to code this from your description alone.",
+  "parameters": { "param1": "value1", "param2": "value2" },
+  "expectedImpact": "Quantify expected improvement (e.g., '+5 SOL/week', 'reduce losses by 40%')",
+  "risks": "What could go wrong with this implementation",
+  "confidence": 8
+}
+
+Be bold and specific. Don't hedge. Give exact numbers and thresholds.`;
+}
+
+function parseProposalResponse(text: string): any {
+  try {
+    const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    let jsonStr = jsonMatch[0];
+    jsonStr = jsonStr.replace(/,\s*([}\]])/g, "$1");
+    return JSON.parse(jsonStr);
+  } catch {
+    return null;
+  }
+}
+
+async function getProposalFromNeo(prompt: string): Promise<string> {
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: [{ role: "user", content: prompt }],
+    max_tokens: 4000,
+    temperature: 0.3,
+    response_format: { type: "json_object" },
+  });
+  return response.choices[0]?.message?.content || "{}";
+}
+
+async function getProposalFromMorpheus(prompt: string): Promise<string> {
+  const response = await gemini.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    config: { temperature: 0.3, maxOutputTokens: 4000 },
+  });
+  try { return response.text || ""; } catch { return ""; }
+}
+
+async function getProposalFromMerovingian(prompt: string): Promise<string> {
+  const response = await openrouter.chat.completions.create({
+    model: "deepseek/deepseek-chat-v3-0324",
+    messages: [{ role: "user", content: prompt }],
+    max_tokens: 4000,
+    temperature: 0.3,
+  });
+  return response.choices[0]?.message?.content || "{}";
+}
+
+async function getProposalFromNiobe(prompt: string): Promise<string> {
+  const response = await openrouter.chat.completions.create({
+    model: "meta-llama/llama-3.3-70b-instruct",
+    messages: [{ role: "user", content: prompt }],
+    max_tokens: 4000,
+    temperature: 0.3,
+  });
+  return response.choices[0]?.message?.content || "{}";
+}
+
+async function getProposal(
+  member: string,
+  model: string,
+  prompt: string,
+  apiCall: (p: string) => Promise<string>,
+): Promise<ImplementationProposal | null> {
+  try {
+    const rawText = await apiCall(prompt);
+    const parsed = parseProposalResponse(rawText);
+    if (!parsed || !parsed.approach) {
+      log("error", `${member} returned unparseable proposal`);
+      return null;
+    }
+    return {
+      member, model,
+      approach: parsed.approach || "Unknown approach",
+      implementation: parsed.implementation || "",
+      parameters: parsed.parameters || {},
+      expectedImpact: parsed.expectedImpact || "Unknown",
+      risks: parsed.risks || "Unknown",
+      confidence: parsed.confidence || 5,
+    };
+  } catch (err: any) {
+    log("error", `${member} proposal failed: ${err.message}`);
+    return null;
+  }
+}
+
+async function runVoting(theme: string, proposals: ImplementationProposal[]): Promise<DebateResult | null> {
+  const votingPrompt = `You are the supreme arbiter for an autonomous Solana trading system council. The council has debated how to implement this optimization:
+
+THEME: "${theme}"
+
+PROPOSALS:
+${proposals.map((p, i) => `
+--- PROPOSAL ${i + 1} by ${p.member} (${p.model}) ---
+Approach: ${p.approach}
+Implementation: ${p.implementation}
+Parameters: ${JSON.stringify(p.parameters)}
+Expected Impact: ${p.expectedImpact}
+Risks: ${p.risks}
+Confidence: ${p.confidence}/10
+`).join("\n")}
+
+VOTE on which proposal is BEST. Consider:
+1. Specificity — does it give exact values an engineer can implement?
+2. Impact — which will improve PnL the most?
+3. Safety — which has the least risk of breaking the system?
+4. Feasibility — which can be implemented cleanly in the existing codebase?
+
+You MUST respond with ONLY valid JSON:
+{
+  "winnerIndex": 0,
+  "reasoning": "Why this proposal won",
+  "votes": [
+    { "voter": "Judge 1", "votedFor": "member name", "reason": "why" },
+    { "voter": "Judge 2", "votedFor": "member name", "reason": "why" },
+    { "voter": "Judge 3", "votedFor": "member name", "reason": "why" }
+  ],
+  "implementationPlan": "Final merged implementation combining the best elements from all proposals. Be extremely specific with exact parameter values, thresholds, and code changes."
+}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: votingPrompt }],
+      max_tokens: 4000,
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+    });
+
+    const text = response.choices[0]?.message?.content || "{}";
+    const parsed = JSON.parse(text);
+    const winnerIdx = parsed.winnerIndex ?? 0;
+    const winner = proposals[winnerIdx] || proposals[0];
+
+    return {
+      theme,
+      proposals,
+      winner: {
+        member: winner.member,
+        approach: winner.approach,
+        implementation: parsed.implementationPlan || winner.implementation,
+        parameters: winner.parameters,
+        votes: (parsed.votes || []).filter((v: any) => v.votedFor === winner.member).length || 2,
+        reasoning: parsed.reasoning || "Best overall approach",
+      },
+      votingBreakdown: (parsed.votes || []).map((v: any) => ({
+        voter: v.voter,
+        votedFor: v.votedFor,
+        reason: v.reason,
+      })),
+    };
+  } catch (err: any) {
+    log("error", `Voting failed for "${theme}": ${err.message}`);
+    const fallback = proposals.reduce((best, p) => p.confidence > best.confidence ? p : best, proposals[0]);
+    return {
+      theme,
+      proposals,
+      winner: {
+        member: fallback.member,
+        approach: fallback.approach,
+        implementation: fallback.implementation,
+        parameters: fallback.parameters,
+        votes: 1,
+        reasoning: "Fallback: highest confidence proposal (voting failed)",
+      },
+      votingBreakdown: [],
+    };
+  }
+}
+
+function saveDebateSession(session: ImplementationDebateSession) {
+  try {
+    const debateFile = path.join("data", "council-debate-history.json");
+    let history: ImplementationDebateSession[] = [];
+    if (fs.existsSync(debateFile)) {
+      history = JSON.parse(fs.readFileSync(debateFile, "utf8"));
+    }
+    history.unshift(session);
+    if (history.length > 10) history = history.slice(0, 10);
+    fs.writeFileSync(debateFile, JSON.stringify(history, null, 2));
+  } catch (err: any) {
+    log("error", `Failed to save debate session: ${err.message}`);
+  }
+}
+
+export function updateCouncilCronConfig(updates: Partial<CouncilCronConfig>): CouncilCronConfig {
+  if (updates.intervalMs !== undefined) updates.intervalMs = Math.max(updates.intervalMs, 12 * 60 * 60 * 1000);
+  config = { ...config, ...updates };
+  if (intervalId) {
+    stopCouncilCron();
+    startCouncilCron();
+  }
+  return config;
+}
