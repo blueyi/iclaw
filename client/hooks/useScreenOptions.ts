@@ -13,16 +13,18 @@ export function useScreenOptions({
 }: UseScreenOptionsParams = {}): NativeStackNavigationOptions {
   const { theme, isDark } = useTheme();
 
+  const isWeb = Platform.OS === "web";
+
   return {
     headerTitleAlign: "center",
-    headerTransparent: transparent,
+    headerTransparent: isWeb ? false : transparent,
     headerBlurEffect: isDark ? "dark" : "light",
     headerTintColor: theme.text,
     headerStyle: {
       backgroundColor: Platform.select({
         ios: undefined,
         android: theme.backgroundRoot,
-        web: theme.backgroundRoot,
+        web: theme.backgroundDefault,
       }),
     },
     gestureEnabled: true,
