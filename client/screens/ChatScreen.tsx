@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Platform,
   Pressable,
+  Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -17,14 +18,17 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import * as Speech from "expo-speech";
 
 import { MessageBubble } from "@/components/MessageBubble";
 import { MessageInput } from "@/components/MessageInput";
 import { TypingIndicator } from "@/components/TypingIndicator";
 import { EmptyChat } from "@/components/EmptyChat";
+import { AgentStatusWidget } from "@/components/AgentStatusWidget";
+import { useAgentStatus } from "@/contexts/WebSocketContext";
 import { useProfile } from "@/contexts/ProfileContext";
-import { Colors, Gradients, Spacing, BorderRadius, Typography } from "@/constants/theme";
-import { apiRequest } from "@/lib/query-client";
+import { Colors, Gradients, Glass, Spacing, BorderRadius, Typography } from "@/constants/theme";
+import { apiRequest, getQueryFn } from "@/lib/query-client";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 import type { Message } from "@shared/schema";
 
@@ -35,6 +39,24 @@ interface MessageData {
   createdAt: string;
 }
 
+interface ModelOption {
+  id: string;
+  name: string;
+  provider: string;
+  icon: keyof typeof Feather.glyphMap;
+  color: string;
+}
+
+const MODELS: ModelOption[] = [
+  { id: "claude-sonnet-4", name: "Claude Sonnet 4", provider: "Anthropic", icon: "hexagon", color: "#d4a574" },
+  { id: "gpt-4o", name: "GPT-4o", provider: "OpenAI", icon: "aperture", color: "#10b981" },
+  { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", provider: "Google", icon: "star", color: "#60a5fa" },
+  { id: "deepseek-v3", name: "DeepSeek V3", provider: "DeepSeek", icon: "layers", color: "#9b5cff" },
+  { id: "ollama-local", name: "Ollama (Local)", provider: "Local", icon: "hard-drive", color: "#22d3ee" },
+];
+
+type AgentState = "idle" | "thinking" | "executing";
+
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
@@ -42,6 +64,12 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [limitReached, setLimitReached] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<ModelOption>(MODELS[0]);
+  const [showModelPicker, setShowModelPicker] = useState(false);
+  const wsAgentStatus = useAgentStatus();
+  const [localAgentState, setLocalAgentState] = useState<AgentState>("idle");
+  const agentState: AgentState = wsAgentStatus.state !== "idle" ? wsAgentStatus.state : localAgentState;
+  const [speechEnabled, setSpeechEnabled] = useState(false);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const {
@@ -65,6 +93,7 @@ export default function ChatScreen() {
       const response = await apiRequest("POST", "/api/messages", {
         content,
         profileId: profile?.id,
+        model: selectedModel.id,
       });
       if (!response.ok) {
         const errData = await response.json();
@@ -92,6 +121,7 @@ export default function ChatScreen() {
       ]);
 
       setIsTyping(true);
+      setLocalAgentState("thinking");
       return { previousMessages };
     },
     onSuccess: (data) => {
@@ -100,14 +130,24 @@ export default function ChatScreen() {
         return [...filtered, data.userMessage, data.assistantMessage];
       });
       setIsTyping(false);
+      setLocalAgentState("idle");
       incrementLocalUsage();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      if (speechEnabled && data.assistantMessage?.content) {
+        Speech.speak(data.assistantMessage.content, {
+          language: "en-US",
+          rate: 0.9,
+          pitch: 1.0,
+        });
+      }
     },
     onError: (error, _, context) => {
       if (context?.previousMessages) {
         queryClient.setQueryData(["/api/messages"], context.previousMessages);
       }
       setIsTyping(false);
+      setLocalAgentState("idle");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     },
   });
@@ -146,6 +186,36 @@ export default function ChatScreen() {
       behavior="padding"
       keyboardVerticalOffset={0}
     >
+      <View style={styles.topBar}>
+        <Pressable
+          style={styles.modelSelector}
+          onPress={() => setShowModelPicker(true)}
+          testID="button-model-selector"
+        >
+          <Feather name={selectedModel.icon} size={14} color={selectedModel.color} />
+          <Text style={styles.modelName} numberOfLines={1}>{selectedModel.name}</Text>
+          <Feather name="chevron-down" size={14} color={Colors.dark.textSecondary} />
+        </Pressable>
+
+        <View style={styles.topBarRight}>
+          <Pressable
+            style={[styles.speechToggle, speechEnabled ? styles.speechActive : null]}
+            onPress={() => {
+              setSpeechEnabled(!speechEnabled);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+            testID="button-speech-toggle"
+          >
+            <Feather
+              name={speechEnabled ? "volume-2" : "volume-x"}
+              size={16}
+              color={speechEnabled ? "#22d3ee" : Colors.dark.textTertiary}
+            />
+          </Pressable>
+          <AgentStatusWidget state={agentState} compact />
+        </View>
+      </View>
+
       <FlatList
         ref={flatListRef}
         data={reversedMessages}
@@ -155,8 +225,8 @@ export default function ChatScreen() {
         contentContainerStyle={[
           styles.listContent,
           {
-            paddingTop: messages.length > 0 ? Spacing.lg : headerHeight + Spacing.xl,
-            paddingBottom: headerHeight + Spacing.xl,
+            paddingTop: messages.length > 0 ? Spacing.lg : headerHeight + Spacing["3xl"],
+            paddingBottom: headerHeight + Spacing["3xl"],
           },
         ]}
         ListEmptyComponent={<EmptyChat />}
@@ -216,7 +286,48 @@ export default function ChatScreen() {
       <MessageInput
         onSend={handleSend}
         disabled={sendMessageMutation.isPending || limitReached}
+        showVoiceButton
       />
+
+      <Modal
+        visible={showModelPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowModelPicker(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowModelPicker(false)}>
+          <View style={styles.modelPickerContainer}>
+            <Text style={styles.modelPickerTitle}>Select Model</Text>
+            <Text style={styles.modelPickerSubtitle}>Choose your AI model for this conversation</Text>
+            {MODELS.map((model) => (
+              <Pressable
+                key={model.id}
+                style={[
+                  styles.modelOption,
+                  selectedModel.id === model.id ? styles.modelOptionSelected : null,
+                ]}
+                onPress={() => {
+                  setSelectedModel(model);
+                  setShowModelPicker(false);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+                testID={`button-model-${model.id}`}
+              >
+                <View style={[styles.modelIconContainer, { backgroundColor: `${model.color}15` }]}>
+                  <Feather name={model.icon} size={20} color={model.color} />
+                </View>
+                <View style={styles.modelInfo}>
+                  <Text style={styles.modelOptionName}>{model.name}</Text>
+                  <Text style={styles.modelProvider}>{model.provider}</Text>
+                </View>
+                {selectedModel.id === model.id ? (
+                  <Feather name="check-circle" size={20} color="#9b5cff" />
+                ) : null}
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -225,6 +336,50 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.dark.backgroundRoot,
+  },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.dark.border,
+  },
+  modelSelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs + 2,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+    maxWidth: 200,
+  },
+  modelName: {
+    ...Typography.caption,
+    color: Colors.dark.textBase,
+    fontWeight: "600",
+  },
+  topBarRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  speechToggle: {
+    width: 32,
+    height: 32,
+    borderRadius: BorderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  speechActive: {
+    backgroundColor: "rgba(34,211,238,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(34,211,238,0.2)",
   },
   listContent: {
     flexGrow: 1,
@@ -281,5 +436,61 @@ const styles = StyleSheet.create({
   usageText: {
     color: Colors.dark.textSecondary,
     fontSize: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.85)",
+    justifyContent: "center",
+    paddingHorizontal: Spacing["2xl"],
+  },
+  modelPickerContainer: {
+    backgroundColor: Colors.dark.backgroundSecondary,
+    borderRadius: BorderRadius.card,
+    padding: Spacing.xl,
+    borderWidth: 1,
+    borderColor: Colors.dark.border,
+  },
+  modelPickerTitle: {
+    ...Typography.h4,
+    color: Colors.dark.text,
+    marginBottom: Spacing.xs,
+  },
+  modelPickerSubtitle: {
+    ...Typography.caption,
+    color: Colors.dark.textSecondary,
+    marginBottom: Spacing.lg,
+  },
+  modelOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.innerCard,
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  modelOptionSelected: {
+    backgroundColor: "rgba(155,92,255,0.08)",
+    borderColor: "rgba(155,92,255,0.2)",
+  },
+  modelIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modelInfo: {
+    flex: 1,
+  },
+  modelOptionName: {
+    ...Typography.small,
+    color: Colors.dark.text,
+    fontWeight: "600",
+  },
+  modelProvider: {
+    ...Typography.caption,
+    color: Colors.dark.textTertiary,
   },
 });

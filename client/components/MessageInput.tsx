@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Pressable,
   Platform,
+  Text,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -13,6 +14,8 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withRepeat,
+  withTiming,
 } from "react-native-reanimated";
 
 import { Colors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
@@ -20,14 +23,17 @@ import { Colors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
 interface MessageInputProps {
   onSend: (message: string) => void;
   disabled?: boolean;
+  showVoiceButton?: boolean;
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function MessageInput({ onSend, disabled = false }: MessageInputProps) {
+export function MessageInput({ onSend, disabled = false, showVoiceButton = false }: MessageInputProps) {
   const [message, setMessage] = useState("");
+  const [voiceHint, setVoiceHint] = useState(false);
   const insets = useSafeAreaInsets();
   const scale = useSharedValue(1);
+  const micScale = useSharedValue(1);
 
   const canSend = message.trim().length > 0 && !disabled;
 
@@ -36,6 +42,17 @@ export function MessageInput({ onSend, disabled = false }: MessageInputProps) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onSend(message.trim());
     setMessage("");
+  };
+
+  const handleVoicePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (Platform.OS === "web") {
+      setVoiceHint(true);
+      setTimeout(() => setVoiceHint(false), 3000);
+    } else {
+      setVoiceHint(true);
+      setTimeout(() => setVoiceHint(false), 3000);
+    }
   };
 
   const animatedButtonStyle = useAnimatedStyle(() => ({
@@ -59,7 +76,26 @@ export function MessageInput({ onSend, disabled = false }: MessageInputProps) {
         { paddingBottom: Math.max(insets.bottom, Spacing.md) },
       ]}
     >
+      {voiceHint ? (
+        <View style={styles.voiceHint}>
+          <Feather name="info" size={14} color={Colors.dark.textSecondary} />
+          <Text style={styles.voiceHintText}>
+            {Platform.OS === "web"
+              ? "Run in Expo Go to use voice input"
+              : "Voice input coming soon - use Expo Go for full experience"}
+          </Text>
+        </View>
+      ) : null}
       <View style={styles.inputWrapper}>
+        {showVoiceButton ? (
+          <Pressable
+            onPress={handleVoicePress}
+            style={styles.voiceButton}
+            testID="button-voice-input"
+          >
+            <Feather name="mic" size={20} color={Colors.dark.textTertiary} />
+          </Pressable>
+        ) : null}
         <TextInput
           style={styles.input}
           placeholder="Message I-Claw..."
@@ -72,6 +108,7 @@ export function MessageInput({ onSend, disabled = false }: MessageInputProps) {
           returnKeyType="send"
           blurOnSubmit={false}
           onSubmitEditing={handleSend}
+          testID="input-message"
         />
         <AnimatedPressable
           onPress={handleSend}
@@ -83,6 +120,7 @@ export function MessageInput({ onSend, disabled = false }: MessageInputProps) {
             canSend ? styles.sendButtonActive : styles.sendButtonDisabled,
             animatedButtonStyle,
           ]}
+          testID="button-send-message"
         >
           <Feather
             name="send"
@@ -104,15 +142,36 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.dark.border,
     ...(Platform.OS === 'ios' ? Shadows.inputBar : { elevation: 4 }),
   },
+  voiceHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    marginBottom: Spacing.xs,
+    backgroundColor: "rgba(155,92,255,0.08)",
+    borderRadius: BorderRadius.sm,
+  },
+  voiceHintText: {
+    color: Colors.dark.textSecondary,
+    fontSize: 12,
+  },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "flex-end",
     backgroundColor: Colors.dark.backgroundSecondary,
     borderRadius: BorderRadius.lg,
-    paddingLeft: Spacing.lg,
+    paddingLeft: Spacing.sm,
     paddingRight: Spacing.xs,
     paddingVertical: Spacing.xs,
     minHeight: Spacing.inputHeight,
+  },
+  voiceButton: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
   },
   input: {
     flex: 1,
@@ -120,6 +179,7 @@ const styles = StyleSheet.create({
     color: Colors.dark.text,
     maxHeight: 120,
     paddingVertical: Platform.OS === "ios" ? Spacing.sm : Spacing.xs,
+    paddingHorizontal: Spacing.sm,
   },
   sendButton: {
     width: 40,

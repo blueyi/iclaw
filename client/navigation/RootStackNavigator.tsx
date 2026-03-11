@@ -12,6 +12,11 @@ import TokenCostsScreen from "@/screens/TokenCostsScreen";
 import SystemMetricsScreen from "@/screens/SystemMetricsScreen";
 import MissionControlScreen from "@/screens/MissionControlScreen";
 import MemoryFeedScreen from "@/screens/MemoryFeedScreen";
+import ChannelDashboardScreen from "@/screens/ChannelDashboardScreen";
+import SkillsBrowserScreen from "@/screens/SkillsBrowserScreen";
+import NodePairingScreen from "@/screens/NodePairingScreen";
+import SoulEditorScreen from "@/screens/SoulEditorScreen";
+import SpendingLimitsScreen from "@/screens/SpendingLimitsScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { HeaderTitle } from "@/components/HeaderTitle";
 
@@ -27,6 +32,11 @@ export type RootStackParamList = {
   SystemMetrics: undefined;
   MissionControl: undefined;
   MemoryFeed: undefined;
+  ChannelDashboard: undefined;
+  SkillsBrowser: undefined;
+  NodePairing: undefined;
+  SoulEditor: undefined;
+  SpendingLimits: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -117,6 +127,46 @@ export default function RootStackNavigator() {
         component={MemoryFeedScreen}
         options={{
           headerTitle: "Memory Feed",
+          headerBackTitle: "Back",
+        }}
+      />
+      <Stack.Screen
+        name="ChannelDashboard"
+        component={ChannelDashboardScreen}
+        options={{
+          headerTitle: "Channels",
+          headerBackTitle: "Back",
+        }}
+      />
+      <Stack.Screen
+        name="SkillsBrowser"
+        component={SkillsBrowserScreen}
+        options={{
+          headerTitle: "Skills",
+          headerBackTitle: "Back",
+        }}
+      />
+      <Stack.Screen
+        name="NodePairing"
+        component={NodePairingScreen}
+        options={{
+          headerTitle: "Device Nodes",
+          headerBackTitle: "Back",
+        }}
+      />
+      <Stack.Screen
+        name="SoulEditor"
+        component={SoulEditorScreen}
+        options={{
+          headerTitle: "SOUL.md Editor",
+          headerBackTitle: "Back",
+        }}
+      />
+      <Stack.Screen
+        name="SpendingLimits"
+        component={SpendingLimitsScreen}
+        options={{
+          headerTitle: "Spending Limits",
           headerBackTitle: "Back",
         }}
       />

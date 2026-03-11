@@ -1,12 +1,12 @@
-# OpenClaw Mobile App
+# OpenClaw Mobile App (I-Claw)
 
 ## Overview
 
-OpenClaw is a mobile AI assistant application built with Expo/React Native that enables users to have natural conversations with an AI backend. The app features a chat interface for communicating with an OpenClaw AI server, with settings to configure the server connection and message persistence preferences.
+I-Claw is a mobile AI assistant application built with Expo/React Native that provides a comprehensive control plane for OpenClaw, the open-source autonomous AI agent. The app enables users to chat with AI, manage agent personality and memory, browse and install skills, pair devices, monitor system health, control spending, and connect to 20+ messaging channels — all from a single mobile interface.
 
 The project uses a monorepo structure with:
 - **Client**: Expo/React Native mobile app (iOS, Android, Web)
-- **Server**: Express.js API backend
+- **Server**: Express.js API backend with WebSocket support
 - **Shared**: Common schemas and types using Drizzle ORM
 
 ## User Preferences
@@ -22,10 +22,14 @@ Preferred communication style: Simple, everyday language.
 **Navigation**: React Navigation with tabs + stack architecture:
 - Bottom tabs: Chat (HomeTab), Gateway (GatewayTab), Rewards (RewardsTab), Profile (ProfileTab)
 - Stack screens: Chat, Settings (modal), CommandCenter, Canvas (WebView), Camera (full-screen)
-- ClawBridge stack screens (accessed from Gateway tab): LiveThoughts, TokenCosts, SystemMetrics, MissionControl, MemoryFeed
+- ClawBridge stack screens (accessed from Gateway tab, organized in 3 sub-sections):
+  - Agent Identity: SoulEditor, MemoryFeed, LiveThoughts, SkillsBrowser
+  - Device Network: NodePairing, ChannelDashboard
+  - Operations: SystemMetrics, TokenCosts, SpendingLimits, MissionControl
 
 **State Management**: 
 - TanStack React Query for server state and caching
+- WebSocket context for real-time updates (agent status, live thoughts, metrics)
 - Local component state for UI interactions
 - AsyncStorage available for local persistence
 
@@ -36,48 +40,118 @@ Preferred communication style: Simple, everyday language.
 - Platform-specific adaptations (blur effects on iOS, solid backgrounds on Android)
 
 **Key UI Components**:
-- MessageBubble: Gradient styling for AI responses, solid for user messages, TTS voice readback button on AI messages (expo-speech)
-- MessageInput: Bottom-fixed input with keyboard handling
+- MessageBubble: Gradient styling for AI responses, solid for user messages
+- MessageInput: Bottom-fixed input with voice button and keyboard handling
+- AgentStatusWidget: Animated pulse indicator showing agent state (idle/thinking/executing/waiting/listening)
 - TypingIndicator: Animated dots during AI response generation
 
 **Advanced Features**:
-- Canvas/A2UI screen: WebView loading Gateway's `/__openclaw__/canvas/` endpoint for rich AI interactions
-- Gateway Status Dashboard: Real-time health monitoring, response latency, device node status (battery, network, platform)
+- Model Selector: Choose between Claude Sonnet 4, GPT-4o, Gemini 2.5 Pro, DeepSeek V3, Ollama (local) per conversation
+- SOUL.md Editor: Create, edit, import/export agent personality configurations with preset templates
+- Skills Browser: Browse 5400+ community skills, install/uninstall, enable/disable, view security status
+- Device Node Pairing: QR code and manual IP pairing flow, approve/reject, invoke device capabilities
+- Channel Dashboard: Connect/disconnect WhatsApp, Telegram, Slack, Discord, Signal, iMessage, Email, SMS
+- Canvas/A2UI: WebView with 3 view modes (Canvas/Scaffold/A2UI), JS evaluation, screenshot, render history
+- Command Center: Visual cron builder, timezone selector, session types, heartbeat configuration, job history
+- Memory Feed: MEMORY.md/USER.md/Daily Logs sync with gateway, importance ratings, edit mode
+- Spending Limits: Daily/monthly budget controls, alert thresholds, progress bars, spending history
+- Gateway TLS Configuration: TLS toggle, certificate/key path inputs, peer verification, connection testing
+- Voice Support: TTS readback toggle in chat, microphone button for voice input
+- WebSocket live updates: Real-time agent thoughts, status changes, metric updates
 - Camera Integration: Photo capture and visual analysis requests sent to AI
-- Biometric Authentication: Face ID/Touch ID quick login via expo-local-authentication with secure token storage (expo-secure-store)
-- Text-to-Speech: Voice readback of AI responses with per-message speaker toggle
+- Biometric Authentication: Face ID/Touch ID quick login via expo-local-authentication
 
 ### Backend Architecture
 
 **Server**: Express.js running on Node.js with TypeScript (compiled via tsx in development, esbuild for production).
 
+**WebSocket**: Real-time `/ws` endpoint for streaming agent thoughts, status changes, metric updates, cost updates, channel messages, and node status events.
+
 **API Design**: RESTful JSON API with endpoints:
-- `GET/POST /api/messages` - Message CRUD operations
+
+Auth & User:
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `POST /api/auth/logout` - Logout
+- `GET /api/auth/me` - Token validation for biometric login
+- `GET/POST /api/profile` - Profile CRUD
+- `PUT /api/profile/:id/wallet` - Wallet update
+
+Messaging & AI:
+- `GET/POST/DELETE /api/messages` - Message CRUD operations
+- `GET /api/models` - List available AI models
+- `PUT /api/settings/model` - Set preferred model
+
+Configuration:
 - `GET/PUT /api/settings` - App configuration
-- `GET/POST/DELETE /api/quick-actions` - Quick action CRUD and execution
-- `GET/POST/PUT/DELETE /api/schedules` - Schedule/automation CRUD
-- `GET /api/action-logs` - Action execution history
-- `GET /api/gateway/status` - Gateway health check with latency measurement
-- `POST /api/gateway/node-report` - Device node capability reporting
-- `GET/POST /api/agent-thoughts/:profileId` - Agent chain-of-thought feed
-- `GET/POST /api/token-costs/:profileId` - API token cost tracking
+- `GET/PUT /api/gateway-tls/:profileId` - TLS configuration
+
+SOUL.md (Agent Personality):
+- `GET /api/soul-configs/templates` - Preset personality templates
+- `GET /api/soul-configs/:profileId` - List configs
+- `POST /api/soul-configs` - Create config
+- `PUT /api/soul-configs/:id` - Update config
+- `DELETE /api/soul-configs/:id` - Delete config
+- `POST /api/soul-configs/:id/activate` - Set as active
+- `POST /api/soul-configs/import` - Import from URL/text
+
+Skills:
+- `GET /api/skills/browse` - Browse available skills catalog (15 skills)
+- `GET /api/skills/:profileId` - List installed skills
+- `POST /api/skills/install` - Install a skill
+- `PUT /api/skills/:id/toggle` - Enable/disable toggle
+- `DELETE /api/skills/:id` - Uninstall
+- `GET /api/skills/:id/security` - Security scan result
+
+Spending Limits:
+- `GET /api/spending-limits/:profileId` - Get current limits
+- `PUT /api/spending-limits` - Update limits/thresholds
+- `GET /api/spending-alerts/:profileId` - Check if approaching limit
+
+Device Nodes:
+- `GET /api/nodes/:profileId` - List paired nodes
+- `POST /api/nodes/pair` - Initiate pairing
+- `PUT /api/nodes/:id/approve` - Approve pending node
+- `DELETE /api/nodes/:id` - Unpair node
+- `POST /api/nodes/:id/invoke` - Invoke node capability
+
+Channels:
+- `GET /api/channels/:profileId` - List channel connections
+- `POST /api/channels/connect` - Connect a new channel
+- `PUT /api/channels/:id/toggle` - Enable/disable channel
+- `DELETE /api/channels/:id` - Disconnect
+- `GET /api/channels/:profileId/stats` - Message stats per channel
+
+Monitoring & Control:
+- `GET /api/gateway/status` - Gateway health check
+- `POST /api/gateway/node-report` - Device node reporting
+- `GET/POST /api/agent-thoughts/:profileId` - Agent thought feed
+- `GET/POST /api/token-costs/:profileId` - Token cost tracking
 - `GET /api/token-costs/:profileId/summary` - Cost summary by model
 - `GET/POST /api/system-metrics` - System resource monitoring
 - `GET /api/system-metrics/history` - Historical metrics
 - `GET/POST/DELETE /api/memories/:profileId` - Agent memory journal
-- `GET /api/emergency-stops/:profileId` - Emergency stop history
 - `POST /api/emergency-stop` - Trigger emergency stop
-- `PUT /api/emergency-stop/:id/resolve` - Resolve an emergency stop
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
-- `GET /api/auth/me` - Token validation for biometric login
+- `PUT /api/emergency-stop/:id/resolve` - Resolve emergency stop
+- `GET /api/emergency-stops/:profileId` - Emergency stop history
+
+Automation:
+- `GET/POST/DELETE /api/quick-actions` - Quick action CRUD and execution
+- `GET/POST/PUT/DELETE /api/schedules` - Schedule CRUD
+- `POST /api/schedules/heartbeat` - Configure heartbeat
+- `GET /api/action-logs` - Action execution history
+
+Rewards & Referrals:
+- `POST /api/rewards/claim` - Claim daily tokens
+- `GET /api/rewards/status/:profileId` - Streak info
+- `GET /api/referrals/:profileId` - Referral stats
+- `GET /api/transactions/:profileId` - Token transactions
 
 **Security**:
-- All ClawBridge endpoints (agent-thoughts, token-costs, system-metrics, memories, emergency-stops, gateway/status) require Bearer token authentication via `requireAuthWithProfile`
-- Profile-scoped routes enforce IDOR protection — users can only access their own data (profileId verified against authenticated user's profile)
-- SSRF protection via `validateGatewayUrl` and `safeFetchGateway` — blocks private IPs (10.x, 172.16-31.x, 192.168.x, 127.x, link-local), localhost, non-HTTP schemes, and DNS rebinding (resolves domain before fetching)
-- Gateway URL validation applied on settings update and all server-side fetches (chat proxy, health checks, emergency stop)
-- Auth token synced globally via `setAuthToken()` in `client/lib/query-client.ts` — all `getQueryFn` and `apiRequest` calls automatically include the `Authorization: Bearer` header
+- All endpoints require Bearer token authentication via `requireAuthWithProfile`
+- Profile-scoped routes enforce IDOR protection
+- SSRF protection via `validateGatewayUrl` and `safeFetchGateway`
+- Auth token synced globally via `setAuthToken()` in `client/lib/query-client.ts`
 
 **OpenClaw Integration**: The server proxies chat messages to a configurable external OpenClaw AI server URL (with SSRF protection), falling back to a simulated response when unavailable.
 
@@ -86,17 +160,25 @@ Preferred communication style: Simple, everyday language.
 **Database**: PostgreSQL with Drizzle ORM for schema management and queries.
 
 **Schema** (defined in `shared/schema.ts`):
-- `users`: Basic user accounts (id, username, password)
-- `messages`: Chat messages (id, content, role, createdAt, conversationId)
+- `users`: User accounts
+- `sessions`: Auth sessions with Bearer tokens
+- `messages`: Chat messages with conversation IDs
 - `settings`: App configuration (openclawUrl, saveMessagesLocally)
-- `quick_actions`: User quick actions (title, description, icon, command)
-- `schedules`: Automated task schedules (title, command, interval, active state)
-- `action_logs`: Execution history for actions and schedules
-- `agent_thoughts`: Agent chain-of-thought entries (type, content, metadata, sessionId)
-- `token_costs`: API token cost tracking (model, inputTokens, outputTokens, cost, requestType)
-- `system_metrics`: System resource snapshots (cpuPercent, memoryPercent, diskPercent, uptime)
-- `agent_memories`: Agent memory journal (title, content, memoryType, tags, importance)
-- `emergency_stops`: Emergency stop records (reason, stoppedProcesses, status, triggeredAt, resolvedAt)
+- `user_profiles`: Wallet, referral codes, token balances, Pro status
+- `referrals`, `daily_rewards`, `user_streaks`, `token_transactions`: Rewards system
+- `quick_actions`, `schedules`, `action_logs`: Automation system
+- `message_usage`: Daily message count tracking
+- `agent_thoughts`: Agent chain-of-thought entries
+- `token_costs`: API token cost tracking by model
+- `system_metrics`: System resource snapshots
+- `agent_memories`: Agent memory journal entries
+- `emergency_stops`: Emergency stop records
+- `soul_configs`: SOUL.md personality configurations
+- `installed_skills`: Installed skill registry with security status
+- `spending_limits`: Daily/monthly spend limits and alerts
+- `paired_nodes`: Paired device nodes with capabilities
+- `channel_connections`: Multi-channel messaging connections
+- `gateway_tls_config`: TLS encryption settings
 
 **Migrations**: Managed via `drizzle-kit push` command.
 
@@ -127,3 +209,5 @@ Preferred communication style: Simple, everyday language.
 - `expo-battery`: Battery level monitoring for Gateway dashboard
 - `@react-native-community/netinfo`: Network type detection
 - `react-native-webview`: Canvas/A2UI WebView for Gateway interactions
+- `expo-clipboard`: Copy/paste for SOUL.md export and Canvas snapshots
+- `ws`: WebSocket server for real-time updates

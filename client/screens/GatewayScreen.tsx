@@ -385,60 +385,21 @@ export default function GatewayScreen() {
         ClawBridge
       </Text>
 
+      <Text style={[styles.bridgeSubSectionTitle, { color: theme.textTertiary }]}>
+        Agent Identity
+      </Text>
       <View style={styles.bridgeGrid}>
         <Pressable
           style={[styles.bridgeCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
-          onPress={() => navigation.navigate('LiveThoughts')}
-          testID="button-live-thoughts"
+          onPress={() => navigation.navigate('SoulEditor')}
+          testID="button-soul-editor"
         >
-          <View style={[styles.bridgeIconWrap, { backgroundColor: 'rgba(155,92,255,0.12)' }]}>
-            <Feather name="activity" size={22} color="#9b5cff" />
+          <View style={[styles.bridgeIconWrap, { backgroundColor: 'rgba(255,215,0,0.12)' }]}>
+            <Feather name="file-text" size={22} color="#FFD700" />
           </View>
-          <Text style={[styles.bridgeCardTitle, { color: theme.text }]}>Live Thoughts</Text>
+          <Text style={[styles.bridgeCardTitle, { color: theme.text }]}>SOUL.md Editor</Text>
           <Text style={[styles.bridgeCardDesc, { color: theme.textTertiary }]}>
-            Agent chain of thought
-          </Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.bridgeCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
-          onPress={() => navigation.navigate('TokenCosts')}
-          testID="button-token-costs"
-        >
-          <View style={[styles.bridgeIconWrap, { backgroundColor: 'rgba(34,211,238,0.12)' }]}>
-            <Feather name="dollar-sign" size={22} color="#22d3ee" />
-          </View>
-          <Text style={[styles.bridgeCardTitle, { color: theme.text }]}>Token Costs</Text>
-          <Text style={[styles.bridgeCardDesc, { color: theme.textTertiary }]}>
-            API spend by model
-          </Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.bridgeCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
-          onPress={() => navigation.navigate('SystemMetrics')}
-          testID="button-system-metrics"
-        >
-          <View style={[styles.bridgeIconWrap, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
-            <Feather name="cpu" size={22} color="#10b981" />
-          </View>
-          <Text style={[styles.bridgeCardTitle, { color: theme.text }]}>System Metrics</Text>
-          <Text style={[styles.bridgeCardDesc, { color: theme.textTertiary }]}>
-            Server resource usage
-          </Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.bridgeCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
-          onPress={() => navigation.navigate('MissionControl')}
-          testID="button-mission-control"
-        >
-          <View style={[styles.bridgeIconWrap, { backgroundColor: 'rgba(239,68,68,0.12)' }]}>
-            <Feather name="alert-octagon" size={22} color="#EF4444" />
-          </View>
-          <Text style={[styles.bridgeCardTitle, { color: theme.text }]}>Mission Control</Text>
-          <Text style={[styles.bridgeCardDesc, { color: theme.textTertiary }]}>
-            Emergency stop switch
+            Personality config
           </Text>
         </Pressable>
 
@@ -452,7 +413,129 @@ export default function GatewayScreen() {
           </View>
           <Text style={[styles.bridgeCardTitle, { color: theme.text }]}>Memory Feed</Text>
           <Text style={[styles.bridgeCardDesc, { color: theme.textTertiary }]}>
-            Agent journal timeline
+            Journal and sync
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.bridgeCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+          onPress={() => navigation.navigate('LiveThoughts')}
+          testID="button-live-thoughts"
+        >
+          <View style={[styles.bridgeIconWrap, { backgroundColor: 'rgba(155,92,255,0.12)' }]}>
+            <Feather name="activity" size={22} color="#9b5cff" />
+          </View>
+          <Text style={[styles.bridgeCardTitle, { color: theme.text }]}>Live Thoughts</Text>
+          <Text style={[styles.bridgeCardDesc, { color: theme.textTertiary }]}>
+            Chain of thought
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.bridgeCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+          onPress={() => navigation.navigate('SkillsBrowser')}
+          testID="button-skills-browser"
+        >
+          <View style={[styles.bridgeIconWrap, { backgroundColor: 'rgba(124,58,237,0.12)' }]}>
+            <Feather name="package" size={22} color="#7c3aed" />
+          </View>
+          <Text style={[styles.bridgeCardTitle, { color: theme.text }]}>Skills</Text>
+          <Text style={[styles.bridgeCardDesc, { color: theme.textTertiary }]}>
+            Browse and install
+          </Text>
+        </Pressable>
+      </View>
+
+      <Text style={[styles.bridgeSubSectionTitle, { color: theme.textTertiary }]}>
+        Device Network
+      </Text>
+      <View style={styles.bridgeGrid}>
+        <Pressable
+          style={[styles.bridgeCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+          onPress={() => navigation.navigate('NodePairing')}
+          testID="button-node-pairing"
+        >
+          <View style={[styles.bridgeIconWrap, { backgroundColor: 'rgba(99,102,241,0.12)' }]}>
+            <Feather name="link-2" size={22} color="#6366f1" />
+          </View>
+          <Text style={[styles.bridgeCardTitle, { color: theme.text }]}>Device Nodes</Text>
+          <Text style={[styles.bridgeCardDesc, { color: theme.textTertiary }]}>
+            Pair and manage
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.bridgeCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+          onPress={() => navigation.navigate('ChannelDashboard')}
+          testID="button-channel-dashboard"
+        >
+          <View style={[styles.bridgeIconWrap, { backgroundColor: 'rgba(88,101,242,0.12)' }]}>
+            <Feather name="radio" size={22} color="#5865F2" />
+          </View>
+          <Text style={[styles.bridgeCardTitle, { color: theme.text }]}>Channels</Text>
+          <Text style={[styles.bridgeCardDesc, { color: theme.textTertiary }]}>
+            Multi-platform
+          </Text>
+        </Pressable>
+      </View>
+
+      <Text style={[styles.bridgeSubSectionTitle, { color: theme.textTertiary }]}>
+        Operations
+      </Text>
+      <View style={styles.bridgeGrid}>
+        <Pressable
+          style={[styles.bridgeCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+          onPress={() => navigation.navigate('SystemMetrics')}
+          testID="button-system-metrics"
+        >
+          <View style={[styles.bridgeIconWrap, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
+            <Feather name="cpu" size={22} color="#10b981" />
+          </View>
+          <Text style={[styles.bridgeCardTitle, { color: theme.text }]}>System Metrics</Text>
+          <Text style={[styles.bridgeCardDesc, { color: theme.textTertiary }]}>
+            Server resources
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.bridgeCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+          onPress={() => navigation.navigate('TokenCosts')}
+          testID="button-token-costs"
+        >
+          <View style={[styles.bridgeIconWrap, { backgroundColor: 'rgba(34,211,238,0.12)' }]}>
+            <Feather name="dollar-sign" size={22} color="#22d3ee" />
+          </View>
+          <Text style={[styles.bridgeCardTitle, { color: theme.text }]}>Token Costs</Text>
+          <Text style={[styles.bridgeCardDesc, { color: theme.textTertiary }]}>
+            API spend tracking
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.bridgeCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+          onPress={() => navigation.navigate('SpendingLimits')}
+          testID="button-spending-limits"
+        >
+          <View style={[styles.bridgeIconWrap, { backgroundColor: 'rgba(239,68,68,0.12)' }]}>
+            <Feather name="shield" size={22} color="#EF4444" />
+          </View>
+          <Text style={[styles.bridgeCardTitle, { color: theme.text }]}>Spending Limits</Text>
+          <Text style={[styles.bridgeCardDesc, { color: theme.textTertiary }]}>
+            Budget and alerts
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.bridgeCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+          onPress={() => navigation.navigate('MissionControl')}
+          testID="button-mission-control"
+        >
+          <View style={[styles.bridgeIconWrap, { backgroundColor: 'rgba(239,68,68,0.12)' }]}>
+            <Feather name="alert-octagon" size={22} color="#EF4444" />
+          </View>
+          <Text style={[styles.bridgeCardTitle, { color: theme.text }]}>Mission Control</Text>
+          <Text style={[styles.bridgeCardDesc, { color: theme.textTertiary }]}>
+            Emergency stop
           </Text>
         </Pressable>
       </View>
@@ -619,6 +702,14 @@ const styles = StyleSheet.create({
   bridgeSectionTitle: {
     ...Typography.h4,
     marginBottom: Spacing.md,
+  },
+  bridgeSubSectionTitle: {
+    ...Typography.caption,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    marginBottom: Spacing.sm,
+    marginTop: Spacing.xs,
   },
   bridgeGrid: {
     flexDirection: 'row',

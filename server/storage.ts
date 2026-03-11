@@ -28,6 +28,18 @@ import {
   type InsertAgentMemory,
   type EmergencyStop,
   type InsertEmergencyStop,
+  type SoulConfig,
+  type InsertSoulConfig,
+  type InstalledSkill,
+  type InsertInstalledSkill,
+  type SpendingLimit,
+  type InsertSpendingLimit,
+  type PairedNode,
+  type InsertPairedNode,
+  type ChannelConnection,
+  type InsertChannelConnection,
+  type GatewayTlsConfig,
+  type InsertGatewayTlsConfig,
   users,
   messages,
   settings,
@@ -46,6 +58,12 @@ import {
   systemMetrics,
   agentMemories,
   emergencyStops,
+  soulConfigs,
+  installedSkills,
+  spendingLimits,
+  pairedNodes,
+  channelConnections,
+  gatewayTlsConfig,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, sql, and, gt } from "drizzle-orm";
@@ -129,6 +147,37 @@ export interface IStorage {
   getEmergencyStops(profileId: string, limit?: number): Promise<EmergencyStop[]>;
   createEmergencyStop(data: InsertEmergencyStop): Promise<EmergencyStop>;
   resolveEmergencyStop(id: string, profileId: string): Promise<EmergencyStop>;
+
+  getSoulConfigs(profileId: string): Promise<SoulConfig[]>;
+  getSoulConfigById(id: string): Promise<SoulConfig | undefined>;
+  createSoulConfig(data: InsertSoulConfig): Promise<SoulConfig>;
+  updateSoulConfig(id: string, data: Partial<SoulConfig>): Promise<SoulConfig>;
+  deleteSoulConfig(id: string, profileId: string): Promise<void>;
+  activateSoulConfig(id: string, profileId: string): Promise<SoulConfig>;
+
+  getInstalledSkills(profileId: string): Promise<InstalledSkill[]>;
+  getInstalledSkillById(id: string): Promise<InstalledSkill | undefined>;
+  createInstalledSkill(data: InsertInstalledSkill): Promise<InstalledSkill>;
+  updateInstalledSkill(id: string, data: Partial<InstalledSkill>): Promise<InstalledSkill>;
+  deleteInstalledSkill(id: string, profileId: string): Promise<void>;
+
+  getSpendingLimits(profileId: string): Promise<SpendingLimit | undefined>;
+  upsertSpendingLimits(profileId: string, data: Partial<SpendingLimit>): Promise<SpendingLimit>;
+
+  getPairedNodes(profileId: string): Promise<PairedNode[]>;
+  getPairedNodeById(id: string): Promise<PairedNode | undefined>;
+  createPairedNode(data: InsertPairedNode): Promise<PairedNode>;
+  updatePairedNode(id: string, data: Partial<PairedNode>): Promise<PairedNode>;
+  deletePairedNode(id: string, profileId: string): Promise<void>;
+
+  getChannelConnections(profileId: string): Promise<ChannelConnection[]>;
+  getChannelConnectionById(id: string): Promise<ChannelConnection | undefined>;
+  createChannelConnection(data: InsertChannelConnection): Promise<ChannelConnection>;
+  updateChannelConnection(id: string, data: Partial<ChannelConnection>): Promise<ChannelConnection>;
+  deleteChannelConnection(id: string, profileId: string): Promise<void>;
+
+  getGatewayTlsConfig(profileId: string): Promise<GatewayTlsConfig | undefined>;
+  upsertGatewayTlsConfig(profileId: string, data: Partial<GatewayTlsConfig>): Promise<GatewayTlsConfig>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -724,6 +773,220 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(emergencyStops.id, id), eq(emergencyStops.profileId, profileId)))
       .returning();
     return updated;
+  }
+
+  async getSoulConfigs(profileId: string): Promise<SoulConfig[]> {
+    return db
+      .select()
+      .from(soulConfigs)
+      .where(eq(soulConfigs.profileId, profileId))
+      .orderBy(desc(soulConfigs.updatedAt));
+  }
+
+  async getSoulConfigById(id: string): Promise<SoulConfig | undefined> {
+    const [config] = await db.select().from(soulConfigs).where(eq(soulConfigs.id, id));
+    return config || undefined;
+  }
+
+  async createSoulConfig(data: InsertSoulConfig): Promise<SoulConfig> {
+    const [config] = await db.insert(soulConfigs).values(data).returning();
+    return config;
+  }
+
+  async updateSoulConfig(id: string, data: Partial<SoulConfig>): Promise<SoulConfig> {
+    const [updated] = await db
+      .update(soulConfigs)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(soulConfigs.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteSoulConfig(id: string, profileId: string): Promise<void> {
+    await db
+      .delete(soulConfigs)
+      .where(and(eq(soulConfigs.id, id), eq(soulConfigs.profileId, profileId)));
+  }
+
+  async activateSoulConfig(id: string, profileId: string): Promise<SoulConfig> {
+    await db
+      .update(soulConfigs)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(soulConfigs.profileId, profileId));
+
+    const [activated] = await db
+      .update(soulConfigs)
+      .set({ isActive: true, updatedAt: new Date() })
+      .where(and(eq(soulConfigs.id, id), eq(soulConfigs.profileId, profileId)))
+      .returning();
+    return activated;
+  }
+
+  async getInstalledSkills(profileId: string): Promise<InstalledSkill[]> {
+    return db
+      .select()
+      .from(installedSkills)
+      .where(eq(installedSkills.profileId, profileId))
+      .orderBy(desc(installedSkills.installedAt));
+  }
+
+  async getInstalledSkillById(id: string): Promise<InstalledSkill | undefined> {
+    const [skill] = await db.select().from(installedSkills).where(eq(installedSkills.id, id));
+    return skill || undefined;
+  }
+
+  async createInstalledSkill(data: InsertInstalledSkill): Promise<InstalledSkill> {
+    const [skill] = await db.insert(installedSkills).values(data).returning();
+    return skill;
+  }
+
+  async updateInstalledSkill(id: string, data: Partial<InstalledSkill>): Promise<InstalledSkill> {
+    const [updated] = await db
+      .update(installedSkills)
+      .set(data)
+      .where(eq(installedSkills.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteInstalledSkill(id: string, profileId: string): Promise<void> {
+    await db
+      .delete(installedSkills)
+      .where(and(eq(installedSkills.id, id), eq(installedSkills.profileId, profileId)));
+  }
+
+  async getSpendingLimits(profileId: string): Promise<SpendingLimit | undefined> {
+    const [limit] = await db
+      .select()
+      .from(spendingLimits)
+      .where(eq(spendingLimits.profileId, profileId));
+    return limit || undefined;
+  }
+
+  async upsertSpendingLimits(profileId: string, data: Partial<SpendingLimit>): Promise<SpendingLimit> {
+    const [result] = await db
+      .insert(spendingLimits)
+      .values({
+        profileId,
+        dailyLimit: data.dailyLimit ?? 500,
+        monthlyLimit: data.monthlyLimit ?? 10000,
+        alertThreshold: data.alertThreshold ?? 80,
+        alertEnabled: data.alertEnabled ?? true,
+        currentDailySpend: data.currentDailySpend ?? 0,
+        currentMonthlySpend: data.currentMonthlySpend ?? 0,
+      })
+      .onConflictDoUpdate({
+        target: spendingLimits.profileId,
+        set: {
+          ...(data.dailyLimit !== undefined ? { dailyLimit: data.dailyLimit } : {}),
+          ...(data.monthlyLimit !== undefined ? { monthlyLimit: data.monthlyLimit } : {}),
+          ...(data.alertThreshold !== undefined ? { alertThreshold: data.alertThreshold } : {}),
+          ...(data.alertEnabled !== undefined ? { alertEnabled: data.alertEnabled } : {}),
+          ...(data.currentDailySpend !== undefined ? { currentDailySpend: data.currentDailySpend } : {}),
+          ...(data.currentMonthlySpend !== undefined ? { currentMonthlySpend: data.currentMonthlySpend } : {}),
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+
+  async getPairedNodes(profileId: string): Promise<PairedNode[]> {
+    return db
+      .select()
+      .from(pairedNodes)
+      .where(eq(pairedNodes.profileId, profileId))
+      .orderBy(desc(pairedNodes.createdAt));
+  }
+
+  async getPairedNodeById(id: string): Promise<PairedNode | undefined> {
+    const [node] = await db.select().from(pairedNodes).where(eq(pairedNodes.id, id));
+    return node || undefined;
+  }
+
+  async createPairedNode(data: InsertPairedNode): Promise<PairedNode> {
+    const [node] = await db.insert(pairedNodes).values(data).returning();
+    return node;
+  }
+
+  async updatePairedNode(id: string, data: Partial<PairedNode>): Promise<PairedNode> {
+    const [updated] = await db
+      .update(pairedNodes)
+      .set(data)
+      .where(eq(pairedNodes.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deletePairedNode(id: string, profileId: string): Promise<void> {
+    await db
+      .delete(pairedNodes)
+      .where(and(eq(pairedNodes.id, id), eq(pairedNodes.profileId, profileId)));
+  }
+
+  async getChannelConnections(profileId: string): Promise<ChannelConnection[]> {
+    return db
+      .select()
+      .from(channelConnections)
+      .where(eq(channelConnections.profileId, profileId))
+      .orderBy(desc(channelConnections.createdAt));
+  }
+
+  async getChannelConnectionById(id: string): Promise<ChannelConnection | undefined> {
+    const [channel] = await db.select().from(channelConnections).where(eq(channelConnections.id, id));
+    return channel || undefined;
+  }
+
+  async createChannelConnection(data: InsertChannelConnection): Promise<ChannelConnection> {
+    const [channel] = await db.insert(channelConnections).values(data).returning();
+    return channel;
+  }
+
+  async updateChannelConnection(id: string, data: Partial<ChannelConnection>): Promise<ChannelConnection> {
+    const [updated] = await db
+      .update(channelConnections)
+      .set(data)
+      .where(eq(channelConnections.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteChannelConnection(id: string, profileId: string): Promise<void> {
+    await db
+      .delete(channelConnections)
+      .where(and(eq(channelConnections.id, id), eq(channelConnections.profileId, profileId)));
+  }
+
+  async getGatewayTlsConfig(profileId: string): Promise<GatewayTlsConfig | undefined> {
+    const [config] = await db
+      .select()
+      .from(gatewayTlsConfig)
+      .where(eq(gatewayTlsConfig.profileId, profileId));
+    return config || undefined;
+  }
+
+  async upsertGatewayTlsConfig(profileId: string, data: Partial<GatewayTlsConfig>): Promise<GatewayTlsConfig> {
+    const [result] = await db
+      .insert(gatewayTlsConfig)
+      .values({
+        profileId,
+        tlsEnabled: data.tlsEnabled ?? false,
+        certPath: data.certPath || null,
+        keyPath: data.keyPath || null,
+        verifyPeer: data.verifyPeer ?? true,
+      })
+      .onConflictDoUpdate({
+        target: gatewayTlsConfig.profileId,
+        set: {
+          ...(data.tlsEnabled !== undefined ? { tlsEnabled: data.tlsEnabled } : {}),
+          ...(data.certPath !== undefined ? { certPath: data.certPath } : {}),
+          ...(data.keyPath !== undefined ? { keyPath: data.keyPath } : {}),
+          ...(data.verifyPeer !== undefined ? { verifyPeer: data.verifyPeer } : {}),
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
   }
 }
 

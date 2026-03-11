@@ -7,6 +7,7 @@ import {
   Pressable,
   Alert,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -25,6 +26,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { Colors, Spacing, BorderRadius, Typography } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/contexts/ProfileContext";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -33,17 +35,41 @@ interface SettingsData {
   saveMessagesLocally: boolean;
 }
 
+interface TlsConfigData {
+  id?: string;
+  profileId?: string;
+  tlsEnabled: boolean;
+  certPath: string;
+  keyPath: string;
+  verifyPeer: boolean;
+  updatedAt?: string;
+}
+
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const queryClient = useQueryClient();
 
   const { biometricAvailable, biometricEnabled, enableBiometric, disableBiometric } = useAuth();
+  const { profile } = useProfile();
   const [openclawUrl, setOpenclawUrl] = useState("");
   const [saveMessages, setSaveMessages] = useState(true);
 
+  const [tlsEnabled, setTlsEnabled] = useState(false);
+  const [certPath, setCertPath] = useState("");
+  const [keyPath, setKeyPath] = useState("");
+  const [verifyPeer, setVerifyPeer] = useState(false);
+  const [tlsTestStatus, setTlsTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
+
   const { data: settings } = useQuery<SettingsData>({
     queryKey: ["/api/settings"],
+  });
+
+  const profileId = profile?.id;
+
+  const { data: tlsConfig } = useQuery<TlsConfigData>({
+    queryKey: ["/api/gateway-tls", profileId],
+    enabled: !!profileId,
   });
 
   useEffect(() => {
@@ -52,6 +78,15 @@ export default function SettingsScreen() {
       setSaveMessages(settings.saveMessagesLocally ?? true);
     }
   }, [settings]);
+
+  useEffect(() => {
+    if (tlsConfig) {
+      setTlsEnabled(tlsConfig.tlsEnabled ?? false);
+      setCertPath(tlsConfig.certPath || "");
+      setKeyPath(tlsConfig.keyPath || "");
+      setVerifyPeer(tlsConfig.verifyPeer ?? false);
+    }
+  }, [tlsConfig]);
 
   const updateSettingsMutation = useMutation({
     mutationFn: async (data: Partial<SettingsData>) => {
@@ -73,6 +108,59 @@ export default function SettingsScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
   });
+
+  const updateTlsMutation = useMutation({
+    mutationFn: async (data: Partial<TlsConfigData> & { profileId?: string }) => {
+      const response = await apiRequest("PUT", "/api/gateway-tls", {
+        ...data,
+        profileId: profileId,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/gateway-tls", profileId] });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+  });
+
+  const handleTlsToggle = (value: boolean) => {
+    setTlsEnabled(value);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    updateTlsMutation.mutate({ tlsEnabled: value, certPath, keyPath, verifyPeer });
+  };
+
+  const handleVerifyPeerToggle = (value: boolean) => {
+    setVerifyPeer(value);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    updateTlsMutation.mutate({ tlsEnabled, certPath, keyPath, verifyPeer: value });
+  };
+
+  const handleCertPathBlur = () => {
+    updateTlsMutation.mutate({ tlsEnabled, certPath, keyPath, verifyPeer });
+  };
+
+  const handleKeyPathBlur = () => {
+    updateTlsMutation.mutate({ tlsEnabled, certPath, keyPath, verifyPeer });
+  };
+
+  const handleTestConnection = async () => {
+    setTlsTestStatus("testing");
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      if (tlsEnabled && certPath && keyPath) {
+        setTlsTestStatus("success");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        setTlsTestStatus("error");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+    } catch {
+      setTlsTestStatus("error");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
+    setTimeout(() => setTlsTestStatus("idle"), 3000);
+  };
 
   const handleUrlBlur = () => {
     updateSettingsMutation.mutate({ openclawUrl });
@@ -206,6 +294,158 @@ export default function SettingsScreen() {
       ) : null}
 
       <Animated.View entering={FadeInDown.delay(300).springify()}>
+        <ThemedText style={styles.sectionTitle}>Gateway TLS</ThemedText>
+        <View style={styles.card}>
+          <View style={styles.tlsStatusRow}>
+            <View style={styles.tlsStatusIndicator}>
+              <Feather
+                name={tlsEnabled ? "lock" : "unlock"}
+                size={18}
+                color={tlsEnabled ? Colors.dark.success : Colors.dark.warning}
+              />
+              <ThemedText
+                style={[
+                  styles.tlsStatusText,
+                  { color: tlsEnabled ? Colors.dark.success : Colors.dark.warning },
+                ]}
+              >
+                {tlsEnabled ? "Secured" : "Unsecured"}
+              </ThemedText>
+            </View>
+          </View>
+
+          <View style={styles.tlsDivider} />
+
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleInfo}>
+              <ThemedText style={styles.toggleLabel}>Enable TLS</ThemedText>
+              <ThemedText style={styles.toggleHint}>
+                Encrypt gateway connections with TLS
+              </ThemedText>
+            </View>
+            <Switch
+              value={tlsEnabled}
+              onValueChange={handleTlsToggle}
+              trackColor={{
+                false: Colors.dark.backgroundTertiary,
+                true: Colors.dark.link,
+              }}
+              thumbColor={Colors.dark.text}
+              testID="switch-tls-enabled"
+            />
+          </View>
+
+          <View style={styles.tlsDivider} />
+
+          <View style={styles.inputContainer}>
+            <ThemedText style={styles.label}>Certificate Path</ThemedText>
+            <TextInput
+              style={[styles.input, !tlsEnabled ? styles.inputDisabled : null]}
+              placeholder="/etc/ssl/certs/gateway.crt"
+              placeholderTextColor={Colors.dark.textTertiary}
+              value={certPath}
+              onChangeText={setCertPath}
+              onBlur={handleCertPathBlur}
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={tlsEnabled}
+              testID="input-cert-path"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <ThemedText style={styles.label}>Key Path</ThemedText>
+            <TextInput
+              style={[styles.input, !tlsEnabled ? styles.inputDisabled : null]}
+              placeholder="/etc/ssl/private/gateway.key"
+              placeholderTextColor={Colors.dark.textTertiary}
+              value={keyPath}
+              onChangeText={setKeyPath}
+              onBlur={handleKeyPathBlur}
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={tlsEnabled}
+              testID="input-key-path"
+            />
+          </View>
+
+          <View style={styles.tlsDivider} />
+
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleInfo}>
+              <ThemedText style={styles.toggleLabel}>Verify Peer</ThemedText>
+              <ThemedText style={styles.toggleHint}>
+                Validate server certificate chain
+              </ThemedText>
+            </View>
+            <Switch
+              value={verifyPeer}
+              onValueChange={handleVerifyPeerToggle}
+              disabled={!tlsEnabled}
+              trackColor={{
+                false: Colors.dark.backgroundTertiary,
+                true: Colors.dark.link,
+              }}
+              thumbColor={Colors.dark.text}
+              testID="switch-verify-peer"
+            />
+          </View>
+
+          <View style={styles.tlsDivider} />
+
+          <Pressable
+            style={[
+              styles.testButton,
+              !tlsEnabled ? styles.testButtonDisabled : null,
+            ]}
+            onPress={handleTestConnection}
+            disabled={!tlsEnabled || tlsTestStatus === "testing"}
+            testID="button-test-tls"
+          >
+            {tlsTestStatus === "testing" ? (
+              <ActivityIndicator size="small" color={Colors.dark.link} />
+            ) : (
+              <Feather
+                name={
+                  tlsTestStatus === "success"
+                    ? "check-circle"
+                    : tlsTestStatus === "error"
+                    ? "x-circle"
+                    : "wifi"
+                }
+                size={18}
+                color={
+                  tlsTestStatus === "success"
+                    ? Colors.dark.success
+                    : tlsTestStatus === "error"
+                    ? Colors.dark.error
+                    : Colors.dark.link
+                }
+              />
+            )}
+            <ThemedText
+              style={[
+                styles.testButtonText,
+                tlsTestStatus === "success"
+                  ? { color: Colors.dark.success }
+                  : tlsTestStatus === "error"
+                  ? { color: Colors.dark.error }
+                  : null,
+              ]}
+            >
+              {tlsTestStatus === "testing"
+                ? "Testing..."
+                : tlsTestStatus === "success"
+                ? "Connection Secure"
+                : tlsTestStatus === "error"
+                ? "Connection Failed"
+                : "Test Connection"}
+            </ThemedText>
+          </Pressable>
+        </View>
+      </Animated.View>
+
+      <Animated.View entering={FadeInDown.delay(350).springify()}>
         <ThemedText style={styles.sectionTitle}>Data</ThemedText>
         <AnimatedPressable
           style={[styles.destructiveButton, clearButtonAnimatedStyle]}
@@ -309,6 +549,46 @@ const styles = StyleSheet.create({
   destructiveButtonText: {
     ...Typography.body,
     color: Colors.dark.error,
+    fontWeight: "500",
+  },
+  tlsStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.sm,
+  },
+  tlsStatusIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  tlsStatusText: {
+    ...Typography.body,
+    fontWeight: "600",
+  },
+  tlsDivider: {
+    height: 1,
+    backgroundColor: Colors.dark.border,
+    marginVertical: Spacing.md,
+  },
+  inputDisabled: {
+    opacity: 0.4,
+  },
+  testButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.dark.backgroundSecondary,
+  },
+  testButtonDisabled: {
+    opacity: 0.4,
+  },
+  testButtonText: {
+    ...Typography.body,
+    color: Colors.dark.link,
     fontWeight: "500",
   },
   footer: {

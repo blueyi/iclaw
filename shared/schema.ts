@@ -308,3 +308,86 @@ export type AgentMemory = typeof agentMemories.$inferSelect;
 export type InsertAgentMemory = typeof agentMemories.$inferInsert;
 export type EmergencyStop = typeof emergencyStops.$inferSelect;
 export type InsertEmergencyStop = typeof emergencyStops.$inferInsert;
+
+export const soulConfigs = pgTable("soul_configs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  profileId: varchar("profile_id").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  content: text("content").notNull(),
+  isActive: boolean("is_active").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const installedSkills = pgTable("installed_skills", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  profileId: varchar("profile_id").notNull(),
+  skillName: varchar("skill_name", { length: 100 }).notNull(),
+  description: text("description").notNull(),
+  source: varchar("source", { length: 30 }).notNull(),
+  category: varchar("category", { length: 50 }).default("general").notNull(),
+  isEnabled: boolean("is_enabled").default(true).notNull(),
+  securityStatus: varchar("security_status", { length: 20 }).default("unreviewed").notNull(),
+  config: text("config"),
+  installedAt: timestamp("installed_at").defaultNow().notNull(),
+});
+
+export const spendingLimits = pgTable("spending_limits", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  profileId: varchar("profile_id").unique().notNull(),
+  dailyLimit: integer("daily_limit").default(500).notNull(),
+  monthlyLimit: integer("monthly_limit").default(10000).notNull(),
+  alertThreshold: integer("alert_threshold").default(80).notNull(),
+  alertEnabled: boolean("alert_enabled").default(true).notNull(),
+  currentDailySpend: integer("current_daily_spend").default(0).notNull(),
+  currentMonthlySpend: integer("current_monthly_spend").default(0).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const pairedNodes = pgTable("paired_nodes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  profileId: varchar("profile_id").notNull(),
+  nodeId: varchar("node_id", { length: 100 }).notNull(),
+  nodeName: varchar("node_name", { length: 100 }).notNull(),
+  platform: varchar("platform", { length: 30 }).notNull(),
+  capabilities: text("capabilities"),
+  status: varchar("status", { length: 20 }).default("pending").notNull(),
+  pairedAt: timestamp("paired_at"),
+  lastSeenAt: timestamp("last_seen_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const channelConnections = pgTable("channel_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  profileId: varchar("profile_id").notNull(),
+  channelType: varchar("channel_type", { length: 30 }).notNull(),
+  channelName: varchar("channel_name", { length: 100 }).notNull(),
+  isActive: boolean("is_active").default(false).notNull(),
+  messageCount: integer("message_count").default(0).notNull(),
+  lastMessageAt: timestamp("last_message_at"),
+  connectedAt: timestamp("connected_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const gatewayTlsConfig = pgTable("gateway_tls_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  profileId: varchar("profile_id").unique().notNull(),
+  tlsEnabled: boolean("tls_enabled").default(false).notNull(),
+  certPath: text("cert_path"),
+  keyPath: text("key_path"),
+  verifyPeer: boolean("verify_peer").default(true).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type SoulConfig = typeof soulConfigs.$inferSelect;
+export type InsertSoulConfig = typeof soulConfigs.$inferInsert;
+export type InstalledSkill = typeof installedSkills.$inferSelect;
+export type InsertInstalledSkill = typeof installedSkills.$inferInsert;
+export type SpendingLimit = typeof spendingLimits.$inferSelect;
+export type InsertSpendingLimit = typeof spendingLimits.$inferInsert;
+export type PairedNode = typeof pairedNodes.$inferSelect;
+export type InsertPairedNode = typeof pairedNodes.$inferInsert;
+export type ChannelConnection = typeof channelConnections.$inferSelect;
+export type InsertChannelConnection = typeof channelConnections.$inferInsert;
+export type GatewayTlsConfig = typeof gatewayTlsConfig.$inferSelect;
+export type InsertGatewayTlsConfig = typeof gatewayTlsConfig.$inferInsert;

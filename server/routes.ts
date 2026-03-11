@@ -1,5 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "node:http";
+import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
 import { URL } from "node:url";
@@ -233,7 +234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/messages", async (req, res) => {
     try {
-      const { content, profileId } = req.body;
+      const { content, profileId, model } = req.body;
       const conversationId =
         (req.body.conversationId as string) || DEFAULT_CONVERSATION_ID;
 
@@ -275,7 +276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const chatResponse = await safeFetchGateway(settings.openclawUrl, '/api/chat', {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: content }),
+          body: JSON.stringify({ message: content, ...(model ? { model } : {}) }),
         });
 
         if (chatResponse?.ok) {
@@ -727,7 +728,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/schedules", async (req, res) => {
     try {
-      const { profileId, title, description, command, intervalMinutes } = req.body;
+      const { profileId, title, description, command, intervalMinutes, cronExpression, timezone, sessionType } = req.body;
       if (!profileId || !title || !command) {
         return res.status(400).json({ error: "profileId, title, and command are required" });
       }
@@ -738,6 +739,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         command,
         intervalMinutes: intervalMinutes || 60,
         isActive: true,
+        cronExpression: cronExpression || null,
+        ...(timezone ? { timezone } : {}),
+        ...(sessionType ? { sessionType } : {}),
       });
       res.json(schedule);
     } catch (error) {
@@ -1052,6 +1056,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/memories/:profileId/sync", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      if (auth.profileId !== req.params.profileId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const settings = await storage.getSettings();
+      if (settings?.openclawUrl) {
+        try {
+          const memResponse = await safeFetchGateway(settings.openclawUrl, '/api/memory', { method: "GET" });
+          if (memResponse?.ok) {
+            const memData = await memResponse.json();
+            const syncedMemory = await storage.createMemory({
+              profileId: auth.profileId,
+              title: "Synced from Gateway",
+              content: typeof memData === 'string' ? memData : JSON.stringify(memData),
+              memoryType: "memory_md",
+              tags: "synced",
+              importance: 3,
+            });
+            return res.json({ success: true, synced: true, memory: syncedMemory });
+          }
+        } catch {}
+      }
+      res.json({ success: true, synced: false, message: "No gateway connected, using local data" });
+    } catch (error) {
+      console.error("Error syncing memories:", error);
+      res.status(500).json({ error: "Failed to sync memories" });
+    }
+  });
+
+  app.get("/api/memories/:profileId/file/:type", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      if (auth.profileId !== req.params.profileId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const fileType = req.params.type;
+      const memories = await storage.getMemories(auth.profileId);
+      const filtered = memories.filter((m: any) => m.memoryType === fileType);
+      const content = filtered.length > 0 ? filtered[0].content : "";
+      res.json({ type: fileType, content, updatedAt: filtered[0]?.createdAt || null });
+    } catch (error) {
+      console.error("Error fetching memory file:", error);
+      res.status(500).json({ error: "Failed to fetch memory file" });
+    }
+  });
+
+  app.put("/api/memories/:profileId/file/:type", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      if (auth.profileId !== req.params.profileId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const fileType = req.params.type;
+      const { content } = req.body;
+      const memories = await storage.getMemories(auth.profileId);
+      const existing = memories.find((m: any) => m.memoryType === fileType);
+      if (existing) {
+        await storage.deleteMemory(existing.id, auth.profileId);
+      }
+      const memory = await storage.createMemory({
+        profileId: auth.profileId,
+        title: fileType === 'memory_md' ? 'MEMORY.md' : fileType === 'user_md' ? 'USER.md' : 'Daily Log',
+        content: content || "",
+        memoryType: fileType,
+        tags: "",
+        importance: 3,
+      });
+      res.json({ success: true, memory });
+    } catch (error) {
+      console.error("Error updating memory file:", error);
+      res.status(500).json({ error: "Failed to update memory file" });
+    }
+  });
+
+  app.get("/api/memories/:profileId/daily-logs", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      if (auth.profileId !== req.params.profileId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const memories = await storage.getMemories(auth.profileId);
+      const logs = memories.filter((m: any) => m.memoryType === 'daily_log');
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching daily logs:", error);
+      res.status(500).json({ error: "Failed to fetch daily logs" });
+    }
+  });
+
+  app.put("/api/memories/:memoryId/importance", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const { importance } = req.body;
+      if (!importance || importance < 1 || importance > 5) {
+        return res.status(400).json({ error: "Importance must be between 1 and 5" });
+      }
+      const memories = await storage.getMemories(auth.profileId);
+      const memory = memories.find((m: any) => m.id === req.params.memoryId);
+      if (!memory) {
+        return res.status(404).json({ error: "Memory not found" });
+      }
+      await storage.deleteMemory(req.params.memoryId, auth.profileId);
+      const updated = await storage.createMemory({
+        profileId: auth.profileId,
+        title: memory.title,
+        content: memory.content,
+        memoryType: memory.memoryType,
+        tags: memory.tags,
+        importance,
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating memory importance:", error);
+      res.status(500).json({ error: "Failed to update memory importance" });
+    }
+  });
+
   app.get("/api/emergency-stops/:profileId", async (req, res) => {
     try {
       const auth = await requireAuthWithProfile(req, res);
@@ -1133,7 +1261,732 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/soul-configs/templates", async (_req, res) => {
+    try {
+      const templates = [
+        {
+          id: "professional",
+          name: "Professional",
+          description: "Formal, precise, and business-oriented communication style",
+          content: "# SOUL.md - Professional\n\n## Identity\nYou are a professional AI assistant focused on productivity and business tasks.\n\n## Communication Style\n- Formal and precise language\n- Data-driven responses\n- Action-oriented suggestions\n- Clear and concise formatting\n\n## Priorities\n1. Accuracy and reliability\n2. Efficiency in task completion\n3. Professional tone at all times",
+        },
+        {
+          id: "casual",
+          name: "Casual",
+          description: "Friendly, relaxed, and conversational tone",
+          content: "# SOUL.md - Casual\n\n## Identity\nYou are a friendly AI buddy who keeps things relaxed and fun.\n\n## Communication Style\n- Conversational and warm\n- Use everyday language\n- Be encouraging and supportive\n- Keep explanations simple\n\n## Priorities\n1. Being helpful and approachable\n2. Making complex things simple\n3. Keeping interactions enjoyable",
+        },
+        {
+          id: "devops",
+          name: "DevOps",
+          description: "Technical, infrastructure-focused with terminal expertise",
+          content: "# SOUL.md - DevOps\n\n## Identity\nYou are a DevOps specialist AI with deep infrastructure knowledge.\n\n## Communication Style\n- Technical and precise\n- Use code blocks and terminal commands\n- Reference best practices\n- Include monitoring considerations\n\n## Expertise\n- CI/CD pipelines\n- Container orchestration\n- Infrastructure as Code\n- System monitoring and alerting",
+        },
+        {
+          id: "minimalist",
+          name: "Minimalist",
+          description: "Brief, direct responses with minimal verbosity",
+          content: "# SOUL.md - Minimalist\n\n## Identity\nYou are a minimal AI that values brevity above all.\n\n## Communication Style\n- Short, direct responses\n- No unnecessary words\n- Bullet points over paragraphs\n- Code over explanation\n\n## Rules\n1. Keep responses under 3 sentences when possible\n2. Skip pleasantries\n3. Get to the point immediately",
+        },
+        {
+          id: "creative",
+          name: "Creative",
+          description: "Imaginative, expressive, and thinking outside the box",
+          content: "# SOUL.md - Creative\n\n## Identity\nYou are a creative AI that thinks outside the box and brings fresh perspectives.\n\n## Communication Style\n- Expressive and imaginative\n- Use metaphors and analogies\n- Explore multiple angles\n- Encourage brainstorming\n\n## Priorities\n1. Innovation and originality\n2. Exploring possibilities\n3. Inspiring creative thinking",
+        },
+      ];
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching templates:", error);
+      res.status(500).json({ error: "Failed to fetch templates" });
+    }
+  });
+
+  app.get("/api/soul-configs/:profileId", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      if (auth.profileId !== req.params.profileId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const configs = await storage.getSoulConfigs(auth.profileId);
+      res.json(configs);
+    } catch (error) {
+      console.error("Error fetching soul configs:", error);
+      res.status(500).json({ error: "Failed to fetch soul configs" });
+    }
+  });
+
+  app.post("/api/soul-configs", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const { name, content } = req.body;
+      if (!name || !content) {
+        return res.status(400).json({ error: "name and content are required" });
+      }
+      const config = await storage.createSoulConfig({
+        profileId: auth.profileId,
+        name,
+        content,
+        isActive: false,
+      });
+      res.json(config);
+    } catch (error) {
+      console.error("Error creating soul config:", error);
+      res.status(500).json({ error: "Failed to create soul config" });
+    }
+  });
+
+  app.put("/api/soul-configs/:id", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const existing = await storage.getSoulConfigById(req.params.id);
+      if (!existing || existing.profileId !== auth.profileId) {
+        return res.status(404).json({ error: "Config not found" });
+      }
+      const { name, content } = req.body;
+      const updated = await storage.updateSoulConfig(req.params.id, {
+        ...(name && { name }),
+        ...(content !== undefined && { content }),
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating soul config:", error);
+      res.status(500).json({ error: "Failed to update soul config" });
+    }
+  });
+
+  app.delete("/api/soul-configs/:id", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      await storage.deleteSoulConfig(req.params.id, auth.profileId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting soul config:", error);
+      res.status(500).json({ error: "Failed to delete soul config" });
+    }
+  });
+
+  app.post("/api/soul-configs/:id/activate", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const existing = await storage.getSoulConfigById(req.params.id);
+      if (!existing || existing.profileId !== auth.profileId) {
+        return res.status(404).json({ error: "Config not found" });
+      }
+      const activated = await storage.activateSoulConfig(req.params.id, auth.profileId);
+      res.json(activated);
+    } catch (error) {
+      console.error("Error activating soul config:", error);
+      res.status(500).json({ error: "Failed to activate soul config" });
+    }
+  });
+
+  app.post("/api/soul-configs/import", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const { name, content, url } = req.body;
+
+      let soulContent = content || "";
+      if (url && !content) {
+        try {
+          const validation = await validateGatewayUrl(url);
+          if (!validation.valid) {
+            return res.status(400).json({ error: `Invalid URL: ${validation.error}` });
+          }
+          const response = await fetch(url);
+          if (response.ok) {
+            soulContent = await response.text();
+          } else {
+            return res.status(400).json({ error: "Failed to fetch content from URL" });
+          }
+        } catch {
+          return res.status(400).json({ error: "Failed to fetch content from URL" });
+        }
+      }
+
+      if (!soulContent) {
+        return res.status(400).json({ error: "content or url is required" });
+      }
+
+      const config = await storage.createSoulConfig({
+        profileId: auth.profileId,
+        name: name || "Imported Config",
+        content: soulContent,
+        isActive: false,
+      });
+      res.json(config);
+    } catch (error) {
+      console.error("Error importing soul config:", error);
+      res.status(500).json({ error: "Failed to import soul config" });
+    }
+  });
+
+  app.get("/api/skills/browse", async (_req, res) => {
+    try {
+      const catalog = [
+        { id: "email-manager", name: "Email Manager", description: "Read, compose, and manage emails across providers", source: "clawhub", category: "communication", securityStatus: "vetted", author: "ClawHub Official" },
+        { id: "calendar-sync", name: "Calendar Sync", description: "Sync and manage calendar events across platforms", source: "clawhub", category: "productivity", securityStatus: "vetted", author: "ClawHub Official" },
+        { id: "file-organizer", name: "File Organizer", description: "Automatically organize and categorize files", source: "clawhub", category: "productivity", securityStatus: "vetted", author: "ClawHub Official" },
+        { id: "web-scraper", name: "Web Scraper", description: "Extract structured data from web pages", source: "npm", category: "data", securityStatus: "unreviewed", author: "community" },
+        { id: "code-reviewer", name: "Code Reviewer", description: "Automated code review with best practice suggestions", source: "clawhub", category: "development", securityStatus: "vetted", author: "ClawHub Official" },
+        { id: "slack-bot", name: "Slack Bot", description: "Interact with Slack workspaces and channels", source: "clawhub", category: "communication", securityStatus: "vetted", author: "ClawHub Official" },
+        { id: "discord-bot", name: "Discord Bot", description: "Manage Discord servers and respond to messages", source: "npm", category: "communication", securityStatus: "unreviewed", author: "community" },
+        { id: "database-query", name: "Database Query", description: "Run SQL queries against connected databases", source: "clawhub", category: "data", securityStatus: "vetted", author: "ClawHub Official" },
+        { id: "image-processor", name: "Image Processor", description: "Resize, convert, and manipulate images", source: "npm", category: "media", securityStatus: "unreviewed", author: "community" },
+        { id: "pdf-generator", name: "PDF Generator", description: "Create PDF documents from templates and data", source: "clawhub", category: "productivity", securityStatus: "vetted", author: "ClawHub Official" },
+        { id: "webhook-manager", name: "Webhook Manager", description: "Create and manage webhooks for event-driven automation", source: "clawhub", category: "development", securityStatus: "vetted", author: "ClawHub Official" },
+        { id: "ssh-tunnel", name: "SSH Tunnel", description: "Establish SSH connections to remote servers", source: "custom", category: "infrastructure", securityStatus: "flagged", author: "unknown" },
+        { id: "crypto-tracker", name: "Crypto Tracker", description: "Track cryptocurrency prices and portfolio", source: "npm", category: "finance", securityStatus: "unreviewed", author: "community" },
+        { id: "git-manager", name: "Git Manager", description: "Manage git repositories, branches, and pull requests", source: "clawhub", category: "development", securityStatus: "vetted", author: "ClawHub Official" },
+        { id: "notification-hub", name: "Notification Hub", description: "Send notifications across multiple platforms", source: "clawhub", category: "communication", securityStatus: "vetted", author: "ClawHub Official" },
+      ];
+      res.json(catalog);
+    } catch (error) {
+      console.error("Error browsing skills:", error);
+      res.status(500).json({ error: "Failed to browse skills" });
+    }
+  });
+
+  app.get("/api/skills/:profileId", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      if (auth.profileId !== req.params.profileId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const skills = await storage.getInstalledSkills(auth.profileId);
+      res.json(skills);
+    } catch (error) {
+      console.error("Error fetching installed skills:", error);
+      res.status(500).json({ error: "Failed to fetch installed skills" });
+    }
+  });
+
+  app.post("/api/skills/install", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const { skillName, description, source, category, config } = req.body;
+      if (!skillName || !description || !source) {
+        return res.status(400).json({ error: "skillName, description, and source are required" });
+      }
+      const skill = await storage.createInstalledSkill({
+        profileId: auth.profileId,
+        skillName,
+        description,
+        source,
+        category: category || "general",
+        isEnabled: true,
+        securityStatus: source === "clawhub" ? "vetted" : "unreviewed",
+        config: config ? JSON.stringify(config) : null,
+      });
+      res.json(skill);
+    } catch (error) {
+      console.error("Error installing skill:", error);
+      res.status(500).json({ error: "Failed to install skill" });
+    }
+  });
+
+  app.put("/api/skills/:id/toggle", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const skill = await storage.getInstalledSkillById(req.params.id);
+      if (!skill || skill.profileId !== auth.profileId) {
+        return res.status(404).json({ error: "Skill not found" });
+      }
+      const updated = await storage.updateInstalledSkill(req.params.id, {
+        isEnabled: !skill.isEnabled,
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error toggling skill:", error);
+      res.status(500).json({ error: "Failed to toggle skill" });
+    }
+  });
+
+  app.delete("/api/skills/:id", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      await storage.deleteInstalledSkill(req.params.id, auth.profileId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error uninstalling skill:", error);
+      res.status(500).json({ error: "Failed to uninstall skill" });
+    }
+  });
+
+  app.get("/api/skills/:id/security", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const skill = await storage.getInstalledSkillById(req.params.id);
+      if (!skill || skill.profileId !== auth.profileId) {
+        return res.status(404).json({ error: "Skill not found" });
+      }
+      const scanResult = {
+        skillId: skill.id,
+        skillName: skill.skillName,
+        securityStatus: skill.securityStatus,
+        source: skill.source,
+        findings: skill.securityStatus === "flagged"
+          ? [
+              { severity: "high", description: "Unverified network access patterns detected" },
+              { severity: "medium", description: "Excessive filesystem permissions requested" },
+            ]
+          : skill.securityStatus === "unreviewed"
+            ? [{ severity: "info", description: "This skill has not been reviewed by the ClawHub security team" }]
+            : [{ severity: "info", description: "This skill has been vetted by the ClawHub security team" }],
+        lastScanned: new Date().toISOString(),
+      };
+      res.json(scanResult);
+    } catch (error) {
+      console.error("Error fetching security scan:", error);
+      res.status(500).json({ error: "Failed to fetch security scan" });
+    }
+  });
+
+  app.get("/api/spending-limits/:profileId", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      if (auth.profileId !== req.params.profileId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      let limits = await storage.getSpendingLimits(auth.profileId);
+      if (!limits) {
+        limits = await storage.upsertSpendingLimits(auth.profileId, {});
+      }
+      res.json(limits);
+    } catch (error) {
+      console.error("Error fetching spending limits:", error);
+      res.status(500).json({ error: "Failed to fetch spending limits" });
+    }
+  });
+
+  app.put("/api/spending-limits", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const { dailyLimit, monthlyLimit, alertThreshold, alertEnabled } = req.body;
+      const limits = await storage.upsertSpendingLimits(auth.profileId, {
+        ...(dailyLimit !== undefined && { dailyLimit }),
+        ...(monthlyLimit !== undefined && { monthlyLimit }),
+        ...(alertThreshold !== undefined && { alertThreshold }),
+        ...(alertEnabled !== undefined && { alertEnabled }),
+      });
+      res.json(limits);
+    } catch (error) {
+      console.error("Error updating spending limits:", error);
+      res.status(500).json({ error: "Failed to update spending limits" });
+    }
+  });
+
+  app.get("/api/spending-alerts/:profileId", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      if (auth.profileId !== req.params.profileId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      let limits = await storage.getSpendingLimits(auth.profileId);
+      if (!limits) {
+        limits = await storage.upsertSpendingLimits(auth.profileId, {});
+      }
+
+      const dailyPercent = limits.dailyLimit > 0 ? Math.round((limits.currentDailySpend / limits.dailyLimit) * 100) : 0;
+      const monthlyPercent = limits.monthlyLimit > 0 ? Math.round((limits.currentMonthlySpend / limits.monthlyLimit) * 100) : 0;
+
+      const alerts: { type: string; message: string; severity: string }[] = [];
+
+      if (dailyPercent >= 100) {
+        alerts.push({ type: "daily_exceeded", message: "Daily spending limit exceeded", severity: "critical" });
+      } else if (dailyPercent >= limits.alertThreshold) {
+        alerts.push({ type: "daily_warning", message: `Daily spending at ${dailyPercent}% of limit`, severity: "warning" });
+      }
+
+      if (monthlyPercent >= 100) {
+        alerts.push({ type: "monthly_exceeded", message: "Monthly spending limit exceeded", severity: "critical" });
+      } else if (monthlyPercent >= limits.alertThreshold) {
+        alerts.push({ type: "monthly_warning", message: `Monthly spending at ${monthlyPercent}% of limit`, severity: "warning" });
+      }
+
+      res.json(alerts);
+    } catch (error) {
+      console.error("Error checking spending alerts:", error);
+      res.status(500).json({ error: "Failed to check spending alerts" });
+    }
+  });
+
+  // === Node Pairing Routes ===
+
+  app.get("/api/nodes/:profileId", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      if (auth.profileId !== req.params.profileId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const nodes = await storage.getPairedNodes(auth.profileId);
+      res.json(nodes);
+    } catch (error) {
+      console.error("Error fetching paired nodes:", error);
+      res.status(500).json({ error: "Failed to fetch paired nodes" });
+    }
+  });
+
+  app.post("/api/nodes/pair", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const { nodeName, platform, capabilities } = req.body;
+      if (!nodeName || !platform) {
+        return res.status(400).json({ error: "nodeName and platform are required" });
+      }
+      const nodeId = `${platform}-${nodeName}-${Date.now()}`.toLowerCase().replace(/\s+/g, '-');
+      const node = await storage.createPairedNode({
+        profileId: auth.profileId,
+        nodeId,
+        nodeName,
+        platform,
+        capabilities: capabilities ? JSON.stringify(capabilities) : null,
+        status: "pending",
+      });
+      const pairingData = {
+        nodeId: node.id,
+        profileId: auth.profileId,
+        token: nodeId,
+        timestamp: new Date().toISOString(),
+      };
+      res.json({ node, pairingData, qrCode: Buffer.from(JSON.stringify(pairingData)).toString('base64') });
+    } catch (error) {
+      console.error("Error pairing node:", error);
+      res.status(500).json({ error: "Failed to pair node" });
+    }
+  });
+
+  app.put("/api/nodes/:id/approve", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const node = await storage.getPairedNodeById(req.params.id);
+      if (!node || node.profileId !== auth.profileId) {
+        return res.status(404).json({ error: "Node not found" });
+      }
+      const updated = await storage.updatePairedNode(req.params.id, {
+        status: "paired",
+        pairedAt: new Date(),
+        lastSeenAt: new Date(),
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error approving node:", error);
+      res.status(500).json({ error: "Failed to approve node" });
+    }
+  });
+
+  app.delete("/api/nodes/:id", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      await storage.deletePairedNode(req.params.id, auth.profileId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error unpairing node:", error);
+      res.status(500).json({ error: "Failed to unpair node" });
+    }
+  });
+
+  app.post("/api/nodes/:id/invoke", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const { capability, params } = req.body;
+      if (!capability) {
+        return res.status(400).json({ error: "capability is required" });
+      }
+      const node = await storage.getPairedNodeById(req.params.id);
+      if (!node || node.profileId !== auth.profileId) {
+        return res.status(404).json({ error: "Node not found" });
+      }
+      if (node.status !== "paired") {
+        return res.status(400).json({ error: "Node is not in paired status" });
+      }
+      await storage.updatePairedNode(req.params.id, { lastSeenAt: new Date() });
+      res.json({
+        success: true,
+        nodeId: node.nodeId,
+        capability,
+        result: `Invoked ${capability} on ${node.nodeName}`,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error invoking node capability:", error);
+      res.status(500).json({ error: "Failed to invoke node capability" });
+    }
+  });
+
+  // === Channel Connection Routes ===
+
+  app.get("/api/channels/:profileId", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      if (auth.profileId !== req.params.profileId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const channels = await storage.getChannelConnections(auth.profileId);
+      res.json(channels);
+    } catch (error) {
+      console.error("Error fetching channels:", error);
+      res.status(500).json({ error: "Failed to fetch channels" });
+    }
+  });
+
+  app.post("/api/channels/connect", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const { channelType, channelName } = req.body;
+      if (!channelType || !channelName) {
+        return res.status(400).json({ error: "channelType and channelName are required" });
+      }
+      const channel = await storage.createChannelConnection({
+        profileId: auth.profileId,
+        channelType,
+        channelName,
+        isActive: true,
+        messageCount: 0,
+        connectedAt: new Date(),
+      });
+      res.json(channel);
+    } catch (error) {
+      console.error("Error connecting channel:", error);
+      res.status(500).json({ error: "Failed to connect channel" });
+    }
+  });
+
+  app.put("/api/channels/:id/toggle", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const channel = await storage.getChannelConnectionById(req.params.id);
+      if (!channel || channel.profileId !== auth.profileId) {
+        return res.status(404).json({ error: "Channel not found" });
+      }
+      const updated = await storage.updateChannelConnection(req.params.id, {
+        isActive: !channel.isActive,
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error toggling channel:", error);
+      res.status(500).json({ error: "Failed to toggle channel" });
+    }
+  });
+
+  app.delete("/api/channels/:id", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      await storage.deleteChannelConnection(req.params.id, auth.profileId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error disconnecting channel:", error);
+      res.status(500).json({ error: "Failed to disconnect channel" });
+    }
+  });
+
+  app.get("/api/channels/:profileId/stats", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      if (auth.profileId !== req.params.profileId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const channels = await storage.getChannelConnections(auth.profileId);
+      const totalChannels = channels.length;
+      const activeChannels = channels.filter(c => c.isActive).length;
+      const totalMessages = channels.reduce((sum, c) => sum + c.messageCount, 0);
+      const byChannel = channels.map(c => ({
+        id: c.id,
+        channelType: c.channelType,
+        channelName: c.channelName,
+        isActive: c.isActive,
+        messageCount: c.messageCount,
+        lastMessageAt: c.lastMessageAt,
+      }));
+      res.json({ totalChannels, activeChannels, totalMessages, byChannel });
+    } catch (error) {
+      console.error("Error fetching channel stats:", error);
+      res.status(500).json({ error: "Failed to fetch channel stats" });
+    }
+  });
+
+  // === Gateway TLS Config Routes ===
+
+  app.get("/api/gateway-tls/:profileId", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      if (auth.profileId !== req.params.profileId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const config = await storage.getGatewayTlsConfig(auth.profileId);
+      res.json(config || { tlsEnabled: false, certPath: null, keyPath: null, verifyPeer: true });
+    } catch (error) {
+      console.error("Error fetching TLS config:", error);
+      res.status(500).json({ error: "Failed to fetch TLS config" });
+    }
+  });
+
+  app.put("/api/gateway-tls", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const { tlsEnabled, certPath, keyPath, verifyPeer } = req.body;
+      const config = await storage.upsertGatewayTlsConfig(auth.profileId, {
+        tlsEnabled: tlsEnabled ?? false,
+        certPath: certPath || null,
+        keyPath: keyPath || null,
+        verifyPeer: verifyPeer ?? true,
+      });
+      res.json(config);
+    } catch (error) {
+      console.error("Error updating TLS config:", error);
+      res.status(500).json({ error: "Failed to update TLS config" });
+    }
+  });
+
+  // === Model Selection Routes ===
+
+  app.get("/api/models", async (_req, res) => {
+    try {
+      const models = [
+        { id: "claude-sonnet-4", name: "Claude Sonnet 4", provider: "Anthropic", capabilities: ["chat", "code", "analysis"], isDefault: true },
+        { id: "gpt-4o", name: "GPT-4o", provider: "OpenAI", capabilities: ["chat", "code", "vision", "analysis"], isDefault: false },
+        { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", provider: "Google", capabilities: ["chat", "code", "vision", "analysis"], isDefault: false },
+        { id: "deepseek-v3", name: "DeepSeek V3", provider: "DeepSeek", capabilities: ["chat", "code", "analysis"], isDefault: false },
+        { id: "ollama-local", name: "Ollama (Local)", provider: "Local", capabilities: ["chat", "code"], isDefault: false },
+      ];
+      res.json(models);
+    } catch (error) {
+      console.error("Error fetching models:", error);
+      res.status(500).json({ error: "Failed to fetch models" });
+    }
+  });
+
+  app.put("/api/settings/model", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const { modelId } = req.body;
+      if (!modelId) {
+        return res.status(400).json({ error: "modelId is required" });
+      }
+      const validModels = ["claude-sonnet-4", "gpt-4o", "gemini-2.5-pro", "deepseek-v3", "ollama-local"];
+      if (!validModels.includes(modelId)) {
+        return res.status(400).json({ error: "Invalid model ID" });
+      }
+      res.json({ success: true, modelId, message: `Model set to ${modelId}` });
+    } catch (error) {
+      console.error("Error setting model:", error);
+      res.status(500).json({ error: "Failed to set model" });
+    }
+  });
+
+  // === Heartbeat/Schedule Enhancement ===
+
+  app.post("/api/schedules/heartbeat", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+      const { intervalMinutes, checklist, isActive } = req.body;
+      if (!intervalMinutes) {
+        return res.status(400).json({ error: "intervalMinutes is required" });
+      }
+      const schedule = await storage.createSchedule({
+        profileId: auth.profileId,
+        title: "Heartbeat Check",
+        description: checklist || "System health check",
+        command: "heartbeat",
+        intervalMinutes,
+        isActive: isActive ?? true,
+        cronExpression: null,
+      });
+      res.json(schedule);
+    } catch (error) {
+      console.error("Error creating heartbeat:", error);
+      res.status(500).json({ error: "Failed to create heartbeat schedule" });
+    }
+  });
+
   const httpServer = createServer(app);
+
+  // === WebSocket Server ===
+
+  const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
+  const wsClients = new Set<WebSocket>();
+
+  wss.on("connection", (ws: WebSocket) => {
+    wsClients.add(ws);
+
+    ws.send(JSON.stringify({
+      type: "connected",
+      message: "Connected to I-Claw WebSocket",
+      timestamp: new Date().toISOString(),
+    }));
+
+    const heartbeatInterval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: "heartbeat",
+          timestamp: new Date().toISOString(),
+        }));
+      }
+    }, 30000);
+
+    ws.on("message", (data: Buffer) => {
+      try {
+        const message = JSON.parse(data.toString());
+        if (message.type === "subscribe") {
+          ws.send(JSON.stringify({
+            type: "subscribed",
+            channels: message.channels || ["agent-thought", "status-change", "metric-update", "cost-update"],
+            timestamp: new Date().toISOString(),
+          }));
+        }
+      } catch {
+        // ignore malformed messages
+      }
+    });
+
+    ws.on("close", () => {
+      wsClients.delete(ws);
+      clearInterval(heartbeatInterval);
+    });
+
+    ws.on("error", () => {
+      wsClients.delete(ws);
+      clearInterval(heartbeatInterval);
+    });
+  });
+
+  (httpServer as any).broadcast = (type: string, data: any) => {
+    const message = JSON.stringify({ type, data, timestamp: new Date().toISOString() });
+    wsClients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+  };
+
   return httpServer;
 }
 

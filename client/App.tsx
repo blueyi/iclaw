@@ -22,6 +22,7 @@ import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
+import { WebSocketProvider } from "@/contexts/WebSocketContext";
 import { Colors } from "@/constants/theme";
 import AuthScreen from "@/screens/AuthScreen";
 
@@ -40,7 +41,9 @@ function AppContent() {
 
   return (
     <ProfileProvider>
-      <RootStackNavigator />
+      <WebSocketProvider>
+        <RootStackNavigator />
+      </WebSocketProvider>
     </ProfileProvider>
   );
 }
