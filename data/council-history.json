@@ -1,0 +1,96 @@
+{
+  "reviews": [
+    {
+      "id": "review-1773341290855",
+      "timestamp": "2026-03-12T18:48:10.855Z",
+      "reviews": [
+        {
+          "member": "Neo",
+          "role": "Chat & Model Intelligence",
+          "model": "Heuristic",
+          "status": "success",
+          "score": 6,
+          "summary": "Chat engine has 2 messages across 0 model(s). No agent identity configured.",
+          "strengths": [
+            "2 total messages processed — the conversation engine is active",
+            "High response rate — assistant is reliably answering"
+          ],
+          "optimizations": [
+            "No model usage data yet — token cost tracking will help optimize AI spend over time",
+            "No active SOUL.md config — set one to give your agent a consistent personality and context"
+          ]
+        },
+        {
+          "member": "Morpheus",
+          "role": "Feature Adoption & UX",
+          "model": "Heuristic",
+          "status": "success",
+          "score": 5,
+          "summary": "1 of 5 key feature areas are active (skills, nodes, channels, memory, schedules). Feature adoption is low.",
+          "strengths": [
+            "1 memory entries — agent has a growing knowledge base"
+          ],
+          "optimizations": [
+            "No skills installed — browse the Skills catalog to extend agent capabilities",
+            "No paired devices — pair your phone or other devices to give the agent physical-world access",
+            "No channels connected — link WhatsApp, Telegram, or Slack so the agent can reach you anywhere",
+            "Memory is sparse — the agent benefits from richer MEMORY.md content to maintain context",
+            "No active schedules — set up heartbeat checks or recurring tasks in Command Center"
+          ]
+        },
+        {
+          "member": "The Oracle",
+          "role": "Cost Efficiency & Sustainability",
+          "model": "Heuristic",
+          "status": "success",
+          "score": 7,
+          "summary": "Daily: $0 / $500. Monthly: $0 / $10000. 0 model(s) contributing to costs.",
+          "strengths": [
+            "Daily spend is healthy at 0% of the $500 limit",
+            "Monthly spend at 0% of the $10000 limit — on track",
+            "Alert thresholds are well configured to catch overspending early"
+          ],
+          "optimizations": []
+        },
+        {
+          "member": "Agent Smith",
+          "role": "Security & Configuration",
+          "model": "Heuristic",
+          "status": "success",
+          "score": 6,
+          "summary": "Security posture is adequate. Auth, SSRF, and IDOR protections are all in place. 16 accounts present.",
+          "strengths": [
+            "SSRF protection active on all gateway fetch operations",
+            "Bearer token authentication enforced on all protected endpoints",
+            "Profile-scoped IDOR protection prevents cross-user data access"
+          ],
+          "optimizations": [
+            "16 user accounts found — if this is personal use, ensure no unauthorized accounts exist",
+            "No SOUL.md config active — the agent operates without defined behavioral constraints"
+          ]
+        }
+      ],
+      "averageScore": 6,
+      "topOptimizations": [
+        "[Neo] No model usage data yet — token cost tracking will help optimize AI spend over time",
+        "[Neo] No active SOUL.md config — set one to give your agent a consistent personality and context",
+        "[Morpheus] No skills installed — browse the Skills catalog to extend agent capabilities",
+        "[Morpheus] No paired devices — pair your phone or other devices to give the agent physical-world access",
+        "[Morpheus] No channels connected — link WhatsApp, Telegram, or Slack so the agent can reach you anywhere",
+        "[Morpheus] Memory is sparse — the agent benefits from richer MEMORY.md content to maintain context"
+      ],
+      "snapshot": {
+        "totalMessages": 2,
+        "activeSkills": 0,
+        "pairedNodes": 0,
+        "activeChannels": 0,
+        "activeSoul": "None"
+      }
+    }
+  ],
+  "config": {
+    "enabled": true,
+    "intervalHours": 24,
+    "useGateway": true
+  }
+}
