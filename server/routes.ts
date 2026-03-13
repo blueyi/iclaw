@@ -119,6 +119,111 @@ async function safeFetchGateway(gatewayUrl: string, path: string, options?: Requ
   }
 }
 
+async function seedNewProfile(profileId: string): Promise<void> {
+  try {
+    // Default SOUL.md — I-Claw Personal Assistant identity
+    await storage.createSoulConfig({
+      profileId,
+      name: "I-Claw Assistant",
+      content: `# SOUL.md — I-Claw Personal Assistant
+
+## Identity
+You are I-Claw, a powerful personal AI assistant built for autonomous operation. You are direct, capable, and resourceful. You act with purpose and keep responses focused.
+
+## Personality
+- Concise and clear — no unnecessary filler or padding
+- Proactive — anticipate what the user needs next
+- Honest — flag uncertainty instead of guessing
+- Efficient — prefer doing over explaining
+
+## Behavioral Boundaries
+- Always confirm before taking irreversible actions
+- Never fabricate information or make up facts
+- Respect privacy — do not store or share sensitive data unnecessarily
+- Escalate to the user when a task exceeds your confidence level
+
+## Communication Style
+- Use plain language; avoid jargon unless the user uses it first
+- Keep responses as short as the task allows
+- Use bullet points for multi-step information
+- Sign off with a clear "done" or "ready" when a task is complete
+
+## Core Directives
+1. Complete tasks fully before reporting back
+2. Remember context from earlier in the conversation
+3. Ask clarifying questions only when truly necessary
+4. Optimize for the user's time, not your own verbosity`,
+      isActive: true,
+    });
+
+    // Spending limits — safe defaults
+    await storage.upsertSpendingLimits(profileId, {
+      dailyLimit: "50",
+      monthlyLimit: "500",
+      alertThreshold: 75,
+      currentDailySpend: "0",
+      currentMonthlySpend: "0",
+    });
+
+    // Default heartbeat schedule
+    await storage.createSchedule({
+      profileId,
+      title: "Hourly Heartbeat",
+      description: "Periodic agent self-check to confirm systems are running",
+      command: "Perform a quick self-check. Report current status, any pending tasks, and confirm systems are nominal. Be brief.",
+      cronExpression: "0 * * * *",
+      isActive: false,
+    });
+
+    // Starter quick actions
+    const starterActions = [
+      { title: "Morning Brief", description: "Get a focused start to the day", icon: "sun", iconColor: "#F59E0B", command: "Give me a concise morning briefing: what should I focus on today, any reminders I have set, and a motivational thought to start." },
+      { title: "Summarize Context", description: "What does the agent know about you", icon: "user", iconColor: "#9b5cff", command: "Summarize everything you know about me and our recent conversations. What are my current goals and active tasks?" },
+      { title: "System Check", description: "Agent self-diagnostic", icon: "activity", iconColor: "#22d3ee", command: "Run a quick system check. Report your current capabilities, active skills, connected channels, and any issues you are aware of." },
+      { title: "Clear & Reset", description: "Fresh start signal", icon: "refresh-cw", iconColor: "#10b981", command: "Acknowledge we are starting fresh. Confirm you are ready for new instructions and briefly state your current configuration." },
+    ];
+    for (const action of starterActions) {
+      await storage.createQuickAction({
+        profileId,
+        title: action.title,
+        description: action.description,
+        icon: action.icon,
+        iconColor: action.iconColor,
+        command: action.command,
+      });
+    }
+
+    // Welcome memory entry
+    await storage.createMemory({
+      profileId,
+      title: "MEMORY.md — Personal Context",
+      content: `# MEMORY.md
+
+## About Me
+[Fill this in — your name, location, timezone, preferences, and anything else you want the agent to always remember]
+
+## Current Goals
+[Add your active goals or projects here]
+
+## Preferences
+- Communication style: direct and concise
+- Preferred model: configured in Settings
+- Working hours: [add yours]
+
+## Important Context
+- This is a personal I-Claw installation
+- All data is stored locally and privately
+- Gateway is configured in the Gateway tab`,
+      memoryType: "memory_md",
+      importance: 5,
+    });
+
+    console.log(`[SEED] New profile ${profileId} seeded with defaults`);
+  } catch (err: any) {
+    console.error(`[SEED] Failed to seed profile ${profileId}:`, err.message);
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/register", async (req, res) => {
     try {
@@ -147,6 +252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const profile = await storage.getOrCreateProfile();
       if (profile) {
         await storage.updateProfile(profile.id, { userId: user.id } as any);
+        await seedNewProfile(profile.id);
       }
 
       const session = await storage.createSession(user.id);
