@@ -367,6 +367,7 @@ export const channelConnections = pgTable("channel_connections", {
   lastMessageAt: timestamp("last_message_at"),
   connectedAt: timestamp("connected_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  config: text("config"),
 });
 
 export const gatewayTlsConfig = pgTable("gateway_tls_config", {

@@ -11,6 +11,15 @@ import {
   isCouncilRunning,
   getLastReview,
 } from "./council";
+import {
+  validateBotToken,
+  setupWebhook,
+  deleteWebhook,
+  sendTelegramMessage,
+  sendTypingAction,
+  parseTelegramConfig,
+  type TelegramUpdate,
+} from "./telegram";
 import bcrypt from "bcryptjs";
 import { URL } from "node:url";
 import * as dns from "node:dns/promises";
@@ -1848,6 +1857,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // === Telegram Webhook Receiver (public — no auth, verified by token in URL) ===
+
+  app.post("/api/telegram/webhook/:token", async (req, res) => {
+    res.sendStatus(200);
+    try {
+      const { token } = req.params;
+      const update: TelegramUpdate = req.body;
+      const msg = update.message;
+      if (!msg?.text || !msg.chat?.id) return;
+
+      const allChannels = await storage.getAllActiveChannelsByType("telegram");
+      const channel = allChannels.find(c => {
+        const cfg = parseTelegramConfig(c.config);
+        return cfg?.botToken === token;
+      });
+      if (!channel) return;
+
+      const chatId = msg.chat.id;
+      const cfg = parseTelegramConfig(channel.config);
+      if (!cfg) return;
+
+      if (!cfg.chatIds.includes(chatId)) {
+        cfg.chatIds.push(chatId);
+        await storage.updateChannelConnection(channel.id, {
+          config: JSON.stringify(cfg),
+        });
+      }
+
+      await sendTypingAction(token, chatId);
+
+      const settings = await storage.getSettings();
+      let reply: string;
+      if (settings?.openclawUrl) {
+        const chatResponse = await safeFetchGateway(settings.openclawUrl, "/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: msg.text }),
+        });
+        if (chatResponse?.ok) {
+          const data = await chatResponse.json();
+          reply = data.response || data.message || "Done.";
+        } else {
+          reply = "Could not reach your OpenClaw gateway. Check your Settings.";
+        }
+      } else {
+        reply = generateLocalResponse(msg.text);
+      }
+
+      await storage.updateChannelConnection(channel.id, {
+        messageCount: channel.messageCount + 1,
+        lastMessageAt: new Date(),
+      });
+
+      await sendTelegramMessage(token, chatId, reply);
+    } catch (err: any) {
+      console.error("[Telegram webhook] error:", err.message);
+    }
+  });
+
+  // === Telegram Bot Setup ===
+
+  app.post("/api/channels/telegram/setup", async (req, res) => {
+    try {
+      const auth = await requireAuthWithProfile(req, res);
+      if (!auth) return;
+
+      const { botToken } = req.body;
+      if (!botToken?.trim()) {
+        return res.status(400).json({ error: "botToken is required" });
+      }
+
+      const bot = await validateBotToken(botToken.trim());
+
+      const proto = req.headers["x-forwarded-proto"] || "https";
+      const host = req.headers["x-forwarded-host"] || req.headers.host;
+      const webhookUrl = `${proto}://${host}/api/telegram/webhook/${botToken.trim()}`;
+
+      await setupWebhook(botToken.trim(), webhookUrl);
+
+      const cfg = {
+        botToken: botToken.trim(),
+        botUsername: bot.username,
+        webhookUrl,
+        chatIds: [],
+      };
+
+      const existing = (await storage.getChannelConnections(auth.profileId))
+        .find(c => c.channelType === "telegram");
+
+      let channel;
+      if (existing) {
+        channel = await storage.updateChannelConnection(existing.id, {
+          channelName: `@${bot.username}`,
+          isActive: true,
+          config: JSON.stringify(cfg),
+        });
+      } else {
+        channel = await storage.createChannelConnection({
+          profileId: auth.profileId,
+          channelType: "telegram",
+          channelName: `@${bot.username}`,
+          isActive: true,
+          messageCount: 0,
+          connectedAt: new Date(),
+          config: JSON.stringify(cfg),
+        });
+      }
+
+      res.json({ channel, botUsername: bot.username, webhookUrl });
+    } catch (err: any) {
+      console.error("[Telegram setup] error:", err.message);
+      res.status(400).json({ error: err.message || "Failed to set up Telegram bot" });
+    }
+  });
+
   // === Channel Connection Routes ===
 
   app.get("/api/channels/:profileId", async (req, res) => {
@@ -1910,6 +2034,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const auth = await requireAuthWithProfile(req, res);
       if (!auth) return;
+      const channel = await storage.getChannelConnectionById(req.params.id);
+      if (channel?.channelType === "telegram") {
+        const cfg = parseTelegramConfig(channel.config);
+        if (cfg?.botToken) {
+          deleteWebhook(cfg.botToken).catch(() => {});
+        }
+      }
       await storage.deleteChannelConnection(req.params.id, auth.profileId);
       res.json({ success: true });
     } catch (error) {

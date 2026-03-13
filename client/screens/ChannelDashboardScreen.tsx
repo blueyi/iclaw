@@ -7,7 +7,10 @@ import {
   Pressable,
   ActivityIndicator,
   RefreshControl,
-  Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -28,6 +31,7 @@ interface ChannelConnection {
   messageCount: number;
   lastMessageAt: string | null;
   connectedAt: string;
+  config?: string;
 }
 
 interface ChannelStats {
@@ -48,6 +52,7 @@ const CHANNEL_CONFIG: Record<ChannelType, { icon: keyof typeof Feather.glyphMap;
 };
 
 const ALL_CHANNEL_TYPES: ChannelType[] = ['whatsapp', 'telegram', 'slack', 'discord', 'signal', 'imessage', 'email', 'sms'];
+const LIVE_CHANNELS: ChannelType[] = ['telegram'];
 
 function StatsSummary({ stats }: { stats: ChannelStats }) {
   return (
@@ -90,9 +95,10 @@ function ChannelCard({
   onDisconnect: (id: string) => void;
   onToggle: (id: string) => void;
 }) {
-  const config = CHANNEL_CONFIG[channelType];
+  const cfg = CHANNEL_CONFIG[channelType];
   const isConnected = !!connection;
   const isActive = connection?.isActive ?? false;
+  const isLive = LIVE_CHANNELS.includes(channelType);
 
   const formatTime = (dateStr: string | null) => {
     if (!dateStr) return 'Never';
@@ -113,24 +119,30 @@ function ChannelCard({
       style={[
         styles.channelCard,
         isActive ? styles.channelCardActive : null,
+        !isLive ? styles.channelCardDimmed : null,
       ]}
       testID={`card-channel-${channelType}`}
     >
       <View style={styles.channelHeader}>
-        <View style={[styles.channelIconWrap, { backgroundColor: `${config.color}20` }]}>
-          <Feather name={config.icon} size={22} color={config.color} />
+        <View style={[styles.channelIconWrap, { backgroundColor: `${cfg.color}20` }]}>
+          <Feather name={cfg.icon} size={22} color={isLive ? cfg.color : Colors.dark.textTertiary} />
         </View>
-        <View style={styles.channelStatusDot}>
+        <View style={styles.channelStatusRow}>
+          {isLive ? (
+            <View style={[styles.liveBadge]}>
+              <Text style={styles.liveBadgeText}>LIVE</Text>
+            </View>
+          ) : null}
           <View style={[styles.dot, { backgroundColor: isActive ? '#10b981' : isConnected ? '#F59E0B' : Colors.dark.textTertiary }]} />
         </View>
       </View>
 
-      <Text style={styles.channelName}>{config.label}</Text>
+      <Text style={[styles.channelName, !isLive && styles.channelNameDimmed]}>{cfg.label}</Text>
 
       {isConnected ? (
         <>
-          <Text style={styles.channelMeta}>
-            {connection.messageCount} messages
+          <Text style={styles.channelMeta} numberOfLines={1}>
+            {connection.channelName !== cfg.label ? connection.channelName : `${connection.messageCount} messages`}
           </Text>
           <Text style={styles.channelActivity}>
             {formatTime(connection.lastMessageAt)}
@@ -159,15 +171,109 @@ function ChannelCard({
         </>
       ) : (
         <Pressable
-          style={styles.connectButton}
-          onPress={() => onConnect(channelType)}
+          style={[styles.connectButton, !isLive && styles.connectButtonDimmed]}
+          onPress={() => isLive ? onConnect(channelType) : undefined}
           testID={`button-connect-${channelType}`}
         >
-          <Feather name="plus" size={14} color={Colors.dark.primary} />
-          <Text style={styles.connectText}>Connect</Text>
+          <Feather name={isLive ? 'plus' : 'clock'} size={14} color={isLive ? Colors.dark.primary : Colors.dark.textTertiary} />
+          <Text style={[styles.connectText, !isLive && styles.connectTextDimmed]}>
+            {isLive ? 'Connect' : 'Coming soon'}
+          </Text>
         </Pressable>
       )}
     </View>
+  );
+}
+
+function TelegramSetupModal({
+  visible,
+  onClose,
+  onSetup,
+  isLoading,
+  error,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSetup: (token: string) => void;
+  isLoading: boolean;
+  error: string | null;
+}) {
+  const [token, setToken] = useState('');
+  const insets = useSafeAreaInsets();
+
+  const handleSubmit = () => {
+    if (token.trim()) onSetup(token.trim());
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <KeyboardAvoidingView
+        style={styles.modalOverlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <View style={[styles.modalSheet, { paddingBottom: insets.bottom + Spacing.xl }]}>
+          <View style={styles.modalHandle} />
+
+          <View style={[styles.telegramIconWrap, { backgroundColor: '#0088cc20' }]}>
+            <Feather name="send" size={28} color="#0088cc" />
+          </View>
+
+          <Text style={styles.modalTitle}>Connect Telegram Bot</Text>
+          <Text style={styles.modalSubtitle}>
+            Your agent will receive messages from Telegram and reply automatically.
+          </Text>
+
+          <View style={styles.stepBox}>
+            <Text style={styles.stepTitle}>How to get a bot token:</Text>
+            <Text style={styles.stepText}>1. Open Telegram and search for <Text style={styles.stepHighlight}>@BotFather</Text></Text>
+            <Text style={styles.stepText}>2. Send the command <Text style={styles.stepHighlight}>/newbot</Text></Text>
+            <Text style={styles.stepText}>3. Follow the prompts, then copy the token it gives you</Text>
+          </View>
+
+          <Text style={styles.inputLabel}>Bot Token</Text>
+          <TextInput
+            style={styles.tokenInput}
+            placeholder="1234567890:ABCDef..."
+            placeholderTextColor={Colors.dark.textTertiary}
+            value={token}
+            onChangeText={setToken}
+            autoCapitalize="none"
+            autoCorrect={false}
+            secureTextEntry={false}
+            testID="input-telegram-token"
+          />
+
+          {error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : null}
+
+          <Pressable
+            style={[styles.setupButton, (!token.trim() || isLoading) && styles.setupButtonDisabled]}
+            onPress={handleSubmit}
+            disabled={!token.trim() || isLoading}
+            testID="button-telegram-setup"
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Feather name="check" size={16} color="#fff" />
+                <Text style={styles.setupButtonText}>Connect Bot</Text>
+              </>
+            )}
+          </Pressable>
+
+          <Pressable style={styles.cancelButton} onPress={onClose} testID="button-telegram-cancel">
+            <Text style={styles.cancelText}>Cancel</Text>
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 
@@ -192,6 +298,9 @@ export default function ChannelDashboardScreen() {
   const profileId = profile?.id;
   const queryClient = useQueryClient();
 
+  const [telegramModalVisible, setTelegramModalVisible] = useState(false);
+  const [telegramSetupError, setTelegramSetupError] = useState<string | null>(null);
+
   const { data: channels = [], isLoading, refetch, isRefetching } = useQuery<ChannelConnection[]>({
     queryKey: ['/api/channels', profileId],
     enabled: !!profileId,
@@ -208,17 +317,18 @@ export default function ChannelDashboardScreen() {
     totalMessages: channels.reduce((sum, c) => sum + c.messageCount, 0),
   };
 
-  const connectMutation = useMutation({
-    mutationFn: async (channelType: ChannelType) => {
-      await apiRequest('POST', '/api/channels/connect', {
-        profileId,
-        channelType,
-        channelName: CHANNEL_CONFIG[channelType].label,
-      });
+  const telegramSetupMutation = useMutation({
+    mutationFn: async (botToken: string) => {
+      return await apiRequest('POST', '/api/channels/telegram/setup', { botToken });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/channels', profileId] });
       queryClient.invalidateQueries({ queryKey: ['/api/channels', profileId, 'stats'] });
+      setTelegramModalVisible(false);
+      setTelegramSetupError(null);
+    },
+    onError: (err: any) => {
+      setTelegramSetupError(err?.message || 'Failed to connect. Check your token and try again.');
     },
   });
 
@@ -249,47 +359,64 @@ export default function ChannelDashboardScreen() {
     refetch();
   }, [refetch]);
 
+  const handleConnect = (type: ChannelType) => {
+    if (type === 'telegram') {
+      setTelegramSetupError(null);
+      setTelegramModalVisible(true);
+    }
+  };
+
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={{
-        paddingTop: headerHeight + Spacing.xl,
-        paddingBottom: insets.bottom + Spacing.xl,
-        paddingHorizontal: Spacing.lg,
-      }}
-      scrollIndicatorInsets={{ bottom: insets.bottom }}
-      refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={Colors.dark.primary} />
-      }
-      testID="screen-channel-dashboard"
-    >
-      <StatsSummary stats={stats} />
+    <>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{
+          paddingTop: headerHeight + Spacing.xl,
+          paddingBottom: insets.bottom + Spacing.xl,
+          paddingHorizontal: Spacing.lg,
+        }}
+        scrollIndicatorInsets={{ bottom: insets.bottom }}
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={Colors.dark.primary} />
+        }
+        testID="screen-channel-dashboard"
+      >
+        <StatsSummary stats={stats} />
 
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.dark.primary} />
-        </View>
-      ) : (
-        <>
-          {channels.length === 0 ? <EmptyState /> : null}
-
-          <Text style={styles.sectionTitle}>Channels</Text>
-
-          <View style={styles.channelGrid}>
-            {ALL_CHANNEL_TYPES.map(type => (
-              <ChannelCard
-                key={type}
-                channelType={type}
-                connection={channelMap.get(type)}
-                onConnect={(t) => connectMutation.mutate(t)}
-                onDisconnect={(id) => disconnectMutation.mutate(id)}
-                onToggle={(id) => toggleMutation.mutate(id)}
-              />
-            ))}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.dark.primary} />
           </View>
-        </>
-      )}
-    </ScrollView>
+        ) : (
+          <>
+            {channels.length === 0 ? <EmptyState /> : null}
+
+            <Text style={styles.sectionTitle}>Channels</Text>
+
+            <View style={styles.channelGrid}>
+              {ALL_CHANNEL_TYPES.map(type => (
+                <ChannelCard
+                  key={type}
+                  channelType={type}
+                  connection={channelMap.get(type)}
+                  onConnect={handleConnect}
+                  onDisconnect={(id) => disconnectMutation.mutate(id)}
+                  onToggle={(id) => toggleMutation.mutate(id)}
+                />
+              ))}
+            </View>
+          </>
+        )}
+      </ScrollView>
+
+      <TelegramSetupModal
+        visible={telegramModalVisible}
+        onClose={() => setTelegramModalVisible(false)}
+        onSetup={(token) => telegramSetupMutation.mutate(token)}
+        isLoading={telegramSetupMutation.isPending}
+        error={telegramSetupError}
+      />
+    </>
   );
 }
 
@@ -347,6 +474,9 @@ const styles = StyleSheet.create({
   channelCardActive: {
     borderColor: 'rgba(16,185,129,0.25)',
   },
+  channelCardDimmed: {
+    opacity: 0.5,
+  },
   channelHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -360,8 +490,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  channelStatusDot: {
-    padding: 4,
+  channelStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  liveBadge: {
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+    backgroundColor: 'rgba(16,185,129,0.15)',
+  },
+  liveBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#10b981',
+    letterSpacing: 0.5,
   },
   dot: {
     width: 8,
@@ -372,6 +516,9 @@ const styles = StyleSheet.create({
     ...Typography.small,
     fontWeight: '700',
     color: Colors.dark.text,
+  },
+  channelNameDimmed: {
+    color: Colors.dark.textTertiary,
   },
   channelMeta: {
     ...Typography.caption,
@@ -419,10 +566,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(155,92,255,0.1)',
     alignSelf: 'flex-start',
   },
+  connectButtonDimmed: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
   connectText: {
     ...Typography.caption,
     color: Colors.dark.primary,
     fontWeight: '600',
+  },
+  connectTextDimmed: {
+    color: Colors.dark.textTertiary,
   },
   loadingContainer: {
     paddingTop: 80,
@@ -454,5 +607,116 @@ const styles = StyleSheet.create({
     ...Typography.small,
     color: Colors.dark.textSecondary,
     textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  modalSheet: {
+    ...Glass.card,
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    padding: Spacing.xl,
+    paddingTop: Spacing.lg,
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginBottom: Spacing.sm,
+  },
+  telegramIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: BorderRadius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    ...Typography.h3,
+    color: Colors.dark.text,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    ...Typography.small,
+    color: Colors.dark.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  stepBox: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.md,
+    gap: Spacing.xs,
+  },
+  stepTitle: {
+    ...Typography.caption,
+    fontWeight: '700',
+    color: Colors.dark.textSecondary,
+    marginBottom: 4,
+  },
+  stepText: {
+    ...Typography.caption,
+    color: Colors.dark.textTertiary,
+    lineHeight: 18,
+  },
+  stepHighlight: {
+    color: '#0088cc',
+    fontWeight: '600',
+  },
+  inputLabel: {
+    ...Typography.caption,
+    fontWeight: '600',
+    color: Colors.dark.textSecondary,
+    alignSelf: 'flex-start',
+  },
+  tokenInput: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    color: Colors.dark.text,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+    fontSize: 14,
+    fontFamily: 'monospace',
+  },
+  errorText: {
+    ...Typography.caption,
+    color: Colors.dark.error,
+    textAlign: 'center',
+  },
+  setupButton: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    backgroundColor: '#0088cc',
+    borderRadius: BorderRadius.sm,
+    paddingVertical: Spacing.md,
+  },
+  setupButtonDisabled: {
+    opacity: 0.4,
+  },
+  setupButtonText: {
+    ...Typography.body,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  cancelButton: {
+    paddingVertical: Spacing.sm,
+  },
+  cancelText: {
+    ...Typography.body,
+    color: Colors.dark.textTertiary,
   },
 });

@@ -172,6 +172,7 @@ export interface IStorage {
 
   getChannelConnections(profileId: string): Promise<ChannelConnection[]>;
   getChannelConnectionById(id: string): Promise<ChannelConnection | undefined>;
+  getAllActiveChannelsByType(channelType: string): Promise<ChannelConnection[]>;
   createChannelConnection(data: InsertChannelConnection): Promise<ChannelConnection>;
   updateChannelConnection(id: string, data: Partial<ChannelConnection>): Promise<ChannelConnection>;
   deleteChannelConnection(id: string, profileId: string): Promise<void>;
@@ -935,6 +936,13 @@ export class DatabaseStorage implements IStorage {
   async getChannelConnectionById(id: string): Promise<ChannelConnection | undefined> {
     const [channel] = await db.select().from(channelConnections).where(eq(channelConnections.id, id));
     return channel || undefined;
+  }
+
+  async getAllActiveChannelsByType(channelType: string): Promise<ChannelConnection[]> {
+    return db
+      .select()
+      .from(channelConnections)
+      .where(and(eq(channelConnections.channelType, channelType), eq(channelConnections.isActive, true)));
   }
 
   async createChannelConnection(data: InsertChannelConnection): Promise<ChannelConnection> {
