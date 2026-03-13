@@ -430,6 +430,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const data = await chatResponse.json();
             assistantResponse =
               data.response || data.message || "OpenClaw processed your request.";
+
+            const usedModel = data.model || model || "unknown";
+            const inputTokens = data.usage?.prompt_tokens || Math.ceil(content.length / 4);
+            const outputTokens = data.usage?.completion_tokens || Math.ceil(assistantResponse.length / 4);
+            const cost = data.usage?.cost || ((inputTokens * 0.003 + outputTokens * 0.006) / 1000);
+            if (profileId) {
+              storage.createTokenCost({
+                profileId,
+                model: usedModel,
+                inputTokens,
+                outputTokens,
+                cost: String(cost),
+                requestType: "chat",
+              }).catch(() => {});
+            }
           } catch {
             assistantResponse = "OpenClaw processed your request.";
           }

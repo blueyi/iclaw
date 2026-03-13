@@ -118,8 +118,10 @@ Device Nodes:
 Channels:
 - `GET /api/channels/:profileId` - List channel connections
 - `POST /api/channels/connect` - Connect a new channel
+- `POST /api/channels/telegram/setup` - Set up Telegram bot (validates token, registers webhook)
+- `POST /api/telegram/webhook/:token` - Telegram webhook receiver (public, no auth)
 - `PUT /api/channels/:id/toggle` - Enable/disable channel
-- `DELETE /api/channels/:id` - Disconnect
+- `DELETE /api/channels/:id` - Disconnect (also removes Telegram webhook if applicable)
 - `GET /api/channels/:profileId/stats` - Message stats per channel
 
 Monitoring & Control:
@@ -148,10 +150,30 @@ Rewards & Referrals:
 - `GET /api/transactions/:profileId` - Token transactions
 
 **Security**:
+- Single-owner mode: only 1 account can register; registration permanently closes after first user
 - All endpoints require Bearer token authentication via `requireAuthWithProfile`
 - Profile-scoped routes enforce IDOR protection
 - SSRF protection via `validateGatewayUrl` and `safeFetchGateway`
 - Auth token synced globally via `setAuthToken()` in `client/lib/query-client.ts`
+
+**Telegram Integration** (`server/telegram.ts`):
+- Real Telegram Bot API integration using native fetch (no extra packages)
+- Webhook-based: bot token validates via `getMe`, webhook registers via `setWebhook`
+- Incoming messages processed through OpenClaw gateway, replies sent via `sendMessage`
+- Webhook cleanup on channel disconnect
+- Chat IDs auto-discovered on first message
+
+**Council System** (`server/council.ts`):
+- Hidden AI review system accessible via 7-tap on "ClawBridge" in Gateway tab
+- Password-gated via expo-secure-store
+- 4 council members: Neo (Chat & Model Intelligence), Morpheus (Feature Adoption), The Oracle (Cost Efficiency), Agent Smith (Security)
+- Heuristic analysis with optional gateway AI override
+- Reviews 6 feature areas: skills, nodes, channels, memory, schedules, quick actions
+- History stored in `data/council-history.json`
+
+**Auto-Seeding** (`seedNewProfile()` in `server/routes.ts`):
+- On registration: SOUL.md, spending limits, heartbeat schedule, 4 quick actions, MEMORY.md template, 3 starter skills
+- Token cost tracking auto-records on every gateway chat message
 
 **OpenClaw Integration**: The server proxies chat messages to a configurable external OpenClaw AI server URL (with SSRF protection), falling back to a simulated response when unavailable.
 

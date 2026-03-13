@@ -158,9 +158,16 @@ async function gatherSnapshot(): Promise<Record<string, any>> {
   } catch { snap.activeSoul = "Unknown"; }
 
   try {
-    const [schedCount] = ((await db.execute(sql`SELECT COUNT(*) as total FROM schedules WHERE is_active = true`)) as any).rows || [];
-    snap.activeSchedules = parseInt(schedCount?.total || "0");
-  } catch { snap.activeSchedules = 0; }
+    const schedRes = await db.execute(sql`SELECT COUNT(*) as total, SUM(CASE WHEN is_active THEN 1 ELSE 0 END) as active FROM schedules`);
+    const schedRow: any = ((schedRes as any).rows || [])[0];
+    snap.activeSchedules = parseInt(schedRow?.active || "0");
+    snap.totalSchedules = parseInt(schedRow?.total || "0");
+  } catch { snap.activeSchedules = 0; snap.totalSchedules = 0; }
+
+  try {
+    const [qaCount] = ((await db.execute(sql`SELECT COUNT(*) as total FROM quick_actions`)) as any).rows || [];
+    snap.quickActions = parseInt(qaCount?.total || "0");
+  } catch { snap.quickActions = 0; }
 
   try {
     const [userCount] = ((await db.execute(sql`SELECT COUNT(*) as total FROM users`)) as any).rows || [];
@@ -273,12 +280,21 @@ function reviewAsMorpheus(snap: Record<string, any>): MemberReview {
   if (snap.activeSchedules > 0) {
     featuresActive++;
     strengths.push(`${snap.activeSchedules} active schedule(s) — automation is running`);
+  } else if (snap.totalSchedules > 0) {
+    strengths.push(`${snap.totalSchedules} schedule(s) configured (inactive) — ready to activate when needed`);
   } else {
-    optimizations.push("No active schedules — set up heartbeat checks or recurring tasks in Command Center");
+    optimizations.push("No schedules configured — set up heartbeat checks or recurring tasks in Command Center");
   }
 
-  score = Math.min(10, 4 + featuresActive * 1.2);
-  const summary = `${featuresActive} of 5 key feature areas are active (skills, nodes, channels, memory, schedules). Feature adoption is ${featuresActive >= 4 ? "strong" : featuresActive >= 2 ? "growing" : "low"}.`;
+  if (snap.quickActions > 0) {
+    featuresActive++;
+    strengths.push(`${snap.quickActions} quick action(s) in Command Center — streamlined agent interaction`);
+  } else {
+    optimizations.push("No quick actions set up — add shortcuts in Command Center for frequent tasks");
+  }
+
+  score = Math.min(10, 3 + featuresActive * 1.2);
+  const summary = `${featuresActive} of 6 key feature areas are active (skills, nodes, channels, memory, schedules, quick actions). Feature adoption is ${featuresActive >= 5 ? "strong" : featuresActive >= 3 ? "growing" : "low"}.`;
   return { ...base, score: Math.round(score), summary, strengths, optimizations };
 }
 
@@ -364,7 +380,8 @@ function reviewAsAgentSmith(snap: Record<string, any>): MemberReview {
     optimizations.push(`${snap.totalUsers} user accounts found — if this is personal use, ensure no unauthorized accounts exist`);
     score -= 1;
   } else {
-    strengths.push("Single-user deployment — attack surface is minimal");
+    strengths.push("Single-owner deployment — registration is locked after first account");
+    strengths.push("Attack surface is minimal with single-user mode active");
   }
 
   if (!snap.spending) {
@@ -500,6 +517,9 @@ export async function runCouncilReview(gatewayUrl?: string): Promise<CouncilRevi
         pairedNodes: snap.pairedNodes || 0,
         activeChannels: snap.activeChannels || 0,
         activeSoul: snap.activeSoul || "None",
+        quickActions: snap.quickActions || 0,
+        totalSchedules: snap.totalSchedules || 0,
+        activeSchedules: snap.activeSchedules || 0,
       },
     };
 
