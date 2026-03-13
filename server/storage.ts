@@ -81,6 +81,7 @@ function generateReferralCode(): string {
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
 
   getMessages(conversationId: string): Promise<Message[]>;
@@ -193,6 +194,10 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(eq(users.username, username));
     return user || undefined;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return db.select().from(users);
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {

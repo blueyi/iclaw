@@ -227,6 +227,23 @@ You are I-Claw, a powerful personal AI assistant built for autonomous operation.
       importance: 5,
     });
 
+    const starterSkills = [
+      { skillName: "Web Search", description: "Search the web for real-time information, news, and answers", source: "clawhub", category: "research", securityStatus: "vetted" },
+      { skillName: "Summarizer", description: "Condense long text, articles, or conversations into key points", source: "clawhub", category: "productivity", securityStatus: "vetted" },
+      { skillName: "Code Assistant", description: "Write, review, and debug code across multiple languages", source: "clawhub", category: "development", securityStatus: "vetted" },
+    ];
+    for (const skill of starterSkills) {
+      await storage.createInstalledSkill({
+        profileId,
+        skillName: skill.skillName,
+        description: skill.description,
+        source: skill.source,
+        category: skill.category,
+        securityStatus: skill.securityStatus,
+        isEnabled: true,
+      });
+    }
+
     console.log(`[SEED] New profile ${profileId} seeded with defaults`);
   } catch (err: any) {
     console.error(`[SEED] Failed to seed profile ${profileId}:`, err.message);
@@ -237,6 +254,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/register", async (req, res) => {
     try {
       const { username, password } = req.body;
+
+      const allUsers = await storage.getAllUsers();
+      if (allUsers.length >= 1) {
+        return res.status(403).json({ error: "Registration is closed. This is a single-owner instance." });
+      }
 
       if (!username || !password) {
         return res.status(400).json({ error: "Username and password are required" });
