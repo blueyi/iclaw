@@ -1,9 +1,9 @@
 entrypoint = "README.md"
-modules = ["nodejs-22", "postgresql-16"]
+modules = ["nodejs-22", "postgresql-16", "python-3.11"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["imagemagick", "tree", "vim"]
+packages = ["imagemagick", "tree", "vim", "nettools"]
 
 [deployment]
 deploymentTarget = "cloudrun"
@@ -12,7 +12,10 @@ run = ["npm", "run", "server:prod"]
 
 [[ports]]
 localPort = 5000
-externalPort = 5000
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
 
 [[ports]]
 localPort = 8081
